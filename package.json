@@ -1,0 +1,28 @@
+{
+  "name": "StreamPlot",
+  "version": "1.0.0",
+  "description": "Nodejs plot streaming library",
+  "main": "index.js",
+  "scripts": {
+    "build": "./build-tools/build-js.sh mangle && ./build-tools/build-css.sh",
+    "build:unmangled": "./build-tools/build-js.sh clean && ./build-tools/build-css.sh"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bootstrap": "^4.6.0",
+    "d3-axis": "^2.0.0",
+    "d3-path": "^2.0.0",
+    "d3-scale": "^3.2.3",
+    "d3-selection": "^2.0.0",
+    "d3-shape": "^2.0.0",
+    "file-saver": "^2.0.5",
+    "jquery": "^3.5.1",
+    "object-path": "^0.11.5",
+    "popper.js": "^1.16.1"
+  },
+  "devDependencies": {
+    "browserify": "^17.0.0",
+    "terser": "^5.10.0"
+  }
+}
