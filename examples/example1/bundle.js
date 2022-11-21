@@ -1,11 +1,11 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-const StreamPlot = require("../../index.js")
+const { DataState, Window, Textbox, Element } = require("../../index.js")
 
 window.jQuery = window.$ = require("jquery");
 window.$ = require("jquery");
 
 console.log(window.$("#container"))
-var w = new StreamPlot.Window(window.$("#container"), {});
+var w = new Window(window.$("#container"), {});
 
 var a = w.add_subplot({top:1,bottom:2,left:1,right:2},{
   width : 600,
@@ -19,14 +19,14 @@ var a = w.add_subplot({top:1,bottom:2,left:1,right:2},{
   ylabel : "Value"
 });
 
-a.plot(StreamPlot.DataState.TimeSince,{scolor:"steelblue",tmax_seconds:20,data_path:'voltage'});
+a.plot(DataState.TimeSince,{scolor:"steelblue",tmax_seconds:20,data_path:'voltage'});
 // Equivalent to:
 //   Line.plot(a,TimeSince,{scolor:"steelblue",tmax_seconds:20,data_path:'voltage'});
-a.plot(StreamPlot.DataState.TimeSince,{scolor:"red",tmax_seconds:20,data_path:'speed'});
+a.plot(DataState.TimeSince,{scolor:"red",tmax_seconds:20,data_path:'speed'});
 // Line.plot(a,TimeSince,{scolor:"red",tmax_seconds:20,data_path:'speed'});
 
 
-StreamPlot.Textbox.write(w,{top:2,bottom:3,left:1,right:3},{title:"Platform.state"},[
+Textbox.write(w,{top:2,bottom:3,left:1,right:3},{title:"Platform.state"},[
   {
     data_path : "platform.state",
     string_func : (obj) => `Neck Yaw: ${parseInt(obj.neck_yaw)} mrad`,
@@ -49,27 +49,30 @@ var a2 = w.add_subplot({top:1,bottom:2,left:2,right:3},{
   title : "Flow Map"
 });
 
-a2.imshow(StreamPlot.DataState.MatrixRGBBottomCenter,{data_path:'map',dimensions:[50,50]});
-// StreamPlot.Element.Matrix.plot(a2,StreamPlot.DataState.MatrixRGBBottomCenter,{data_path:'map',dimensions:[50,50]});
+a2.imshow(DataState.MatrixRGBBottomCenter,{data_path:'map',dimensions:[50,50]});
+//Element.Matrix.plot(a2, DataState.MatrixRGBBottomCenter,{data_path:'map',dimensions:[50,50]});
 
-a2.plot(StreamPlot.DataState.Trajectory,{scolor:"#00aa00",tmax_seconds:20,data_path:'current_dead_reckon'});
-// StreamPlot.Element.Line.plot(a2,StreamPlot.DataState.Trajectory,{scolor:"#00aa00",tmax_seconds:20,data_path:'current_dead_reckon'});
+a2.plot(DataState.Trajectory,{scolor:"#00aa00",tmax_seconds:20,data_path:'current_dead_reckon'});
+// Element.Line.plot(a2,DataState.Trajectory,{scolor:"#00aa00",tmax_seconds:20,data_path:'current_dead_reckon'});
 
-StreamPlot.Element.Pointer.plot(a2,StreamPlot.DataState.Pose,{fcolor:"#000000aa",data_path:'current_dead_reckon'})
+Element.Pointer.plot(a2,DataState.Pose,{fcolor:"#000000aa",data_path:'current_dead_reckon'})
 
-var e6 = new StreamPlot.Element.Pointer(a2,{fcolor:"#aa0000aa", skewness: 4, width:0.05});
-var d6 = new StreamPlot.DataState.Pose(e6,{data_path:'current_dead_reckon'});
-var d7 = new StreamPlot.DataState.SingleValue(e6,{data_path:'platform.state',key:'neck_yaw'});
+var e6 = new Element.Pointer(a2, {fcolor:"#aa0000aa", skewness: 4, width:0.05});
+var d6 = new DataState.Pose(e6, {data_path:'current_dead_reckon'});
 
-StreamPlot.Element.Line.plot(a2,StreamPlot.DataState.Path,{scolor:"#0000aa",data_path:'landscape'})
+//var d7 = new DataState.SingleValue(e6, {data_path:'platform.state',key:'neck_yaw'});
+
+Element.Line.plot(a2, DataState.Path,{scolor:"#0000aa",data_path:'landscape'})
 
 w.init();
 w.start();
 
+let randcolor = ()=>[parseInt(Math.random()*255), parseInt(Math.random()*255), parseInt(Math.random()*255)]
 
 // Emulate
 var t0 = Date.now();
 var iter = [...Array(50)]
+
 setInterval(()=>{
   w.update({type:"voltage",data:Math.sin((Date.now()-t0)*5e-4)})
 },30)
