@@ -1,15 +1,189 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-/**
- *
- * Needs jquery as $ and d3
- */
+const StreamPlot = require("../../index.js")
 
-const d3select = require('d3-selection').select;
-const { scaleLinear } = require('d3-scale');
-const { axisBottom, axisLeft } = require('d3-axis');
+window.jQuery = window.$ = require("jquery");
+window.$ = require("jquery");
+
+console.log(window.$("#container"))
+var w = new StreamPlot.Window(window.$("#container"), {});
+
+var a = w.add_subplot({top:1,bottom:2,left:1,right:2},{
+  width : 600,
+  height : 400,
+  margins : {
+    top: 30, right: 20, bottom: 30, left: 50
+  },
+  xlim : [0,20],
+  ylim : [-1.0,1.0],
+  xlabel : "Time Since (sec)",
+  ylabel : "Value"
+});
+
+a.plot(StreamPlot.DataState.TimeSince,{scolor:"steelblue",tmax_seconds:20,data_path:'voltage'});
+// Equivalent to:
+//   Line.plot(a,TimeSince,{scolor:"steelblue",tmax_seconds:20,data_path:'voltage'});
+a.plot(StreamPlot.DataState.TimeSince,{scolor:"red",tmax_seconds:20,data_path:'speed'});
+// Line.plot(a,TimeSince,{scolor:"red",tmax_seconds:20,data_path:'speed'});
 
 
-class ElementBase {
+StreamPlot.Textbox.write(w,{top:2,bottom:3,left:1,right:3},{title:"Platform.state"},[
+  {
+    data_path : "platform.state",
+    string_func : (obj) => `Neck Yaw: ${parseInt(obj.neck_yaw)} mrad`,
+    default_string: "Neck Yaw: N.A."
+  },{
+    data_path : "platform.state",
+    string_func : (obj) => `Neck Pitch: ${parseFloat(obj.neck_pitch)} mrad`,
+    default_string: "Neck Pitch: N.A."
+  }
+]);
+
+var a2 = w.add_subplot({top:1,bottom:2,left:2,right:3},{
+  width : 600,
+  height : 600,
+  margins : {
+    top: 30, right: 20, bottom: 30, left: 50
+  },
+  xlim : [-2.5,2.5],
+  ylim : [-0.05,4.95],
+  title : "Flow Map"
+});
+
+a2.imshow(StreamPlot.DataState.MatrixRGBBottomCenter,{data_path:'map',dimensions:[50,50]});
+// StreamPlot.Element.Matrix.plot(a2,StreamPlot.DataState.MatrixRGBBottomCenter,{data_path:'map',dimensions:[50,50]});
+
+a2.plot(StreamPlot.DataState.Trajectory,{scolor:"#00aa00",tmax_seconds:20,data_path:'current_dead_reckon'});
+// StreamPlot.Element.Line.plot(a2,StreamPlot.DataState.Trajectory,{scolor:"#00aa00",tmax_seconds:20,data_path:'current_dead_reckon'});
+
+StreamPlot.Element.Pointer.plot(a2,StreamPlot.DataState.Pose,{fcolor:"#000000aa",data_path:'current_dead_reckon'})
+
+var e6 = new StreamPlot.Element.Pointer(a2,{fcolor:"#aa0000aa", skewness: 4, width:0.05});
+var d6 = new StreamPlot.DataState.Pose(e6,{data_path:'current_dead_reckon'});
+var d7 = new StreamPlot.DataState.SingleValue(e6,{data_path:'platform.state',key:'neck_yaw'});
+
+StreamPlot.Element.Line.plot(a2,StreamPlot.DataState.Path,{scolor:"#0000aa",data_path:'landscape'})
+
+w.init();
+w.start();
+
+
+// Emulate
+var t0 = Date.now();
+var iter = [...Array(50)]
+setInterval(()=>{
+  w.update({type:"voltage",data:Math.sin((Date.now()-t0)*5e-4)})
+},30)
+setInterval(()=>{
+  w.update({type:"speed",data:Math.sin((Date.now()-t0)*5e-4)**2})
+},30)
+setInterval(()=>{
+  t = (Date.now()-t0)*5e-4
+  w.update({type:"current_dead_reckon",data:{x:2*Math.sin(t),y:2-2*Math.cos(t),heading:Math.PI/2 - t}})
+},30)
+setInterval(()=>{
+  w.update({type:"map",data: iter.map((d)=>iter.map((d)=>randcolor()))})
+},1000)
+setTimeout(()=>{
+  w.update({type:"landscape",data:{path:[...Array(30)].map((d,i) => [0.1*i,0.01*i**2])}})
+},1000)
+setInterval(()=>{
+  t = (Date.now()-t0)*5e-4
+  w.update({type:"platform.state",data:{neck_yaw:t,neck_pitch:0.1*t}})
+},100)
+
+},{"../../index.js":2,"jquery":31}],2:[function(require,module,exports){
+const DataState = require("./lib/DataState");
+const Element = require("./lib/Element");
+
+const { Axis, Textbox } = require('./lib/Fields');
+const { Window } = require('./lib/Window');
+
+module.exports = exports = {
+    Window : Window,
+    Axis : Axis,
+    Textbox : Textbox,
+    Element : Element,
+    DataState : DataState
+};
+
+},{"./lib/DataState":3,"./lib/Element":4,"./lib/Fields":5,"./lib/Window":6}],3:[function(require,module,exports){
+
+
+class DataState {
+    constructor(element) {
+
+        this.element = element;
+        this.data = [];
+        this._is_updated = false;
+
+        this.connect_to_element();
+    }
+
+    get is_updated() {
+        return this._is_updated;
+    }
+    set is_updated(value) {
+        this._is_updated = !!value;
+    }
+
+    // -------------------------
+    //   Connectivity Methods
+    // -------------------------
+    connect_to_element() {
+        this.element.add_data_state(this);
+    }
+
+    // -------------------------
+    //   Opereration Methods
+    // -------------------------
+
+    /* Wrapper for .update(...) to track if the DataState has been modified
+   *
+   * @param [Object] datum - the datum to (potentially update with)
+   */
+    _update(datum) {
+        this.is_updated = this.update(datum) || this.is_updated;
+    }
+
+    /* Update the DataItem with new datum (Override me!)
+   *
+   * Each time a new datum arrives, this method is called with that datum,
+   *  it is up to you to check if the datum is relevent to this DataState,
+   *  and if it is, cache that datum somehow. At the end, return a boolean
+   *  indicating if the DataState was actually modified by this method call
+   *
+   * @param [Object] datum - the datum to (potentially update with)
+   * @returns [bool] - boolean reprepresenting if the DataItem was acutally updated
+   */
+    update(datum) { return false; }
+
+
+    init() {
+        this.setup();
+    }
+
+    /* Setup the data state (Override me)
+   */
+    setup() {}
+}
+
+
+exports["DataState"] = DataState;
+
+exports["TimeSince"] = require("./datastates/TimeSince")
+exports["MatrixRGBBottomCenter"] = require("./datastates/MatrixRGBBottomCenter")
+exports["Path"] = require("./datastates/Path")
+exports["Pose"] = require("./datastates/Pose")
+exports["SingleValue"] = require("./datastates/SingleValue")
+exports["Text"] = require("./datastates/Text")
+exports["Trajectory"] = require("./datastates/Trajectory")
+
+module.export = exports
+
+},{"./datastates/MatrixRGBBottomCenter":7,"./datastates/Path":8,"./datastates/Pose":9,"./datastates/SingleValue":10,"./datastates/Text":11,"./datastates/TimeSince":12,"./datastates/Trajectory":13}],4:[function(require,module,exports){
+var fs = require('fs');
+
+class Element {
     constructor(field,{}) {
         this.field = field;
         this.data_states = [];
@@ -69,540 +243,20 @@ class ElementBase {
     }
 }
 
-class DataStateBase {
-    constructor(element) {
+exports["Element"] = Element;
 
-        this.element = element;
-        this.data = [];
-        this._is_updated = false;
+exports["Line"] = require("./elements/Line")
+exports["Polygon"] = require("./elements/Polygon")
+exports["Pointer"] = require("./elements/Pointer")
+exports["Text"] = require("./elements/Text")
+exports["Matrix"] = require("./elements/Matrix")
 
-        this.connect_to_element();
-    }
 
-    get is_updated() {
-        return this._is_updated;
-    }
-    set is_updated(value) {
-        this._is_updated = !!value;
-    }
 
-    // -------------------------
-    //   Connectivity Methods
-    // -------------------------
-    connect_to_element() {
-        this.element.add_data_state(this);
-    }
+module.exports = exports;
 
-    // -------------------------
-    //   Opereration Methods
-    // -------------------------
-
-    /* Wrapper for .update(...) to track if the DataState has been modified
-   *
-   * @param [Object] datum - the datum to (potentially update with)
-   */
-    _update(datum) {
-        this.is_updated = this.update(datum) || this.is_updated;
-    }
-
-    /* Update the DataItem with new datum (Override me!)
-   *
-   * Each time a new datum arrives, this method is called with that datum,
-   *  it is up to you to check if the datum is relevent to this DataState,
-   *  and if it is, cache that datum somehow. At the end, return a boolean
-   *  indicating if the DataState was actually modified by this method call
-   *
-   * @param [Object] datum - the datum to (potentially update with)
-   * @returns [bool] - boolean reprepresenting if the DataItem was acutally updated
-   */
-    update(datum) { return false; }
-
-
-    init() {
-        this.setup();
-    }
-
-    /* Setup the data state (Override me)
-   */
-    setup() {}
-}
-
-module.exports = exports = {
-    ElementBase : ElementBase,
-    DataStateBase : DataStateBase
-};
-
-},{"d3-axis":9,"d3-scale":14,"d3-selection":15}],2:[function(require,module,exports){
-const op = require("object-path");
-
-const base = require("./base");
-
-class TimeSinceDS extends base.DataStateBase {
-
-    constructor(element, config) {
-        super(element);
-
-        this.tmax = config.tmax_seconds || 20;
-        this.data_path = config.data_path || "";
-    }
-
-    update(datum) {
-        if (datum.type !== this.data_path) { return false; }
-        let now = Date.now();
-        this.data.push({
-            arrival : now,
-            y : datum.data
-        });
-        this.data.forEach((dat,i) => {
-            this.data[i].x = (now - this.data[i].arrival)*1e-3;
-        });
-        while (this.data.length > 0 && this.data[0].x > this.tmax) { this.data.shift(); }
-        return true;
-    }
-}
-
-
-class MatrixRGBBottomCenterDS extends base.DataStateBase {
-
-    constructor(element, {data_path, dimensions, length_scale}) {
-        super(element);
-        this.N = dimensions[0];
-        this.M = dimensions[1];
-        this.dx = length_scale || 0.1;
-        this.data_path = data_path;
-    }
-
-    to_hex(list) {
-        return '#' + list.map(this.__byte).join("");
-    }
-    __byte(number) {
-        let string = number.toString(16);
-        switch (string.length) {
-        case 0: return "00";
-        case 1: return "0"+string;
-        case 2: return string;
-        default: return string.slice(2);
-        }
-    }
-
-    update(datum) {
-        if (datum.type !== this.data_path) { return false; }
-
-        this.data = [];
-        datum.data.forEach((r,ri) => {
-            r.forEach((c,ci) => {
-                this.data.push({
-                    y : (this.N - 0.5 - ri) * this.dx,
-                    x : (ci - (this.M - 1) / 2 - 0.5) * this.dx,
-                    fill : this.to_hex(c)
-                });
-            });
-        });
-        return true;
-    }
-}
-
-
-class PoseDS extends base.DataStateBase {
-
-    constructor(element, config) {
-        super(element);
-        this.data_path = config.data_path;
-    }
-
-    parse(position_state) {
-        return {
-            x : position_state.x,
-            y : position_state.y,
-            heading : position_state.heading,
-            vx : Math.sin(position_state.heading),
-            vy : Math.cos(position_state.heading)
-        };
-    }
-
-    // Gets landscape
-    update(datum) {
-        if (datum.type !== this.data_path) { return false; }
-
-        this.data = this.parse(datum.data);
-        return true;
-    }
-}
-
-class SingleValueDS extends base.DataStateBase {
-
-    constructor(element, config) {
-        super(element);
-        this.data_path = config.data_path;
-        this.key = config.key;
-    }
-
-    // Gets landscape
-    update(datum) {
-        if (datum.type !== this.data_path) { return false; }
-
-        this.data = op.get(datum.data,this.key);
-        return true;
-    }
-}
-
-class PathDS extends base.DataStateBase {
-
-    constructor(element, config) {
-        super(element);
-        this.data_path = config.data_path || "";
-    }
-
-    parse(position_vec) {
-        return {
-            x : position_vec[0],
-            y : position_vec[1]
-        };
-    }
-
-    // Gets landscape
-    update(datum) {
-        if (datum.type !== this.data_path) { return false; }
-
-        this.data = datum.data.path.map(p => this.parse(p));
-        return true;
-    }
-}
-
-class TrajectoryDS extends TimeSinceDS {
-
-    parse(position_state) {
-        return {
-            x : position_state.x,
-            y : position_state.y
-        };
-    }
-
-    update(datum) {
-        if (datum.type !== this.data_path) { return false; }
-        let now = Date.now();
-        this.data.push(Object.assign({arrival:now},this.parse(datum.data)));
-        this.data.forEach((dat,i) => {
-            this.data[i].t = (now - this.data[i].arrival)*1e-3;
-        });
-        while (this.data.length > 0 && this.data[0].t > this.tmax) { this.data.shift(); }
-        return true;
-    }
-}
-
-class TextDS extends base.DataStateBase {
-
-    constructor(element, {data_path, string_func, default_string}) {
-        super(element);
-        this.data_path = data_path;
-        this.string_func = string_func || ((obj) => JSON.stringify(obj));
-        this.data = default_string || "No data";
-        this.is_updated = true;
-    }
-
-    update(datum) {
-        if (datum.type !== this.data_path) { return false; }
-        this.data = this.string_func(datum.data);
-        return true;
-    }
-}
-
-
-// $ cat datastate.js | grep -o "class [^\W]* extends"
-module.exports = exports = {
-    TimeSinceDS : TimeSinceDS,
-    MatrixRGBBottomCenterDS : MatrixRGBBottomCenterDS,
-    PoseDS : PoseDS,
-    SingleValueDS : SingleValueDS,
-    PathDS : PathDS,
-    TrajectoryDS : TrajectoryDS,
-    TextDS : TextDS
-};
-
-},{"./base":1,"object-path":20}],3:[function(require,module,exports){
-const d3line = require('d3-shape').line;
-
-const base = require("./base");
-const ds = require("./datastate");
-
-class Line extends base.ElementBase {
-    constructor(axis,config_obj) {
-        super(axis,config_obj);
-
-        // Set defaults
-        this.scolor = config_obj.scolor || "#000000";
-        this.fcolor = config_obj.fcolor || "#00000000";
-        this.sw = config_obj.sw || 2;
-        this.label = config_obj.label || "";
-        this.class = config_obj.class || "line";
-    }
-
-    setup() {
-        this.line = d3line()
-            .x((d) => { return this.field.xtrans(d.x); })
-            .y((d) => { return this.field.ytrans(d.y); });
-    }
-
-    draw() {
-        if (!this.data_states[0].is_updated) { return; }
-        this.field.plot.select(`#${this.id}`).remove();
-        this.field.plot.append("path").attr("id",this.id)
-            .attr("label",this.label)
-            .attr("class",this.class)
-            .attr("style",`fill: ${this.fcolor}; stroke: ${this.scolor}; stroke-width: ${this.sw};`)
-            .attr("d",this.line(this.data_states[0].data));
-    }
-
-    // static time_since(axis, data_path, config){
-    //   let line = new this(axis,config);
-    //   new ds.TimeSinceDS(line, data_path, config);
-    //   return line;
-    // }
-    //
-    // static trajectory(axis, data_path, config){
-    //   let line = new this(axis,config);
-    //   new ds.TrajectoryDS(line, data_path, config);
-    //   return line;
-    // }
-
-    static plot(axis,data_class,config) {
-        let line = new this(axis,config);
-        new data_class(line,config);
-        return line;
-    }
-}
-
-class Polygon extends Line {
-    constructor(axis,config_obj) {
-        super(axis,config_obj);
-        // Reset defaults to filled with no line
-        this.class = config_obj.class || "poly";
-        this.fcolor = config_obj.fcolor || "#000000";
-        this.scolor = config_obj.scolor || "#00000000";
-    }
-}
-
-class Pointer extends Polygon {
-
-    constructor(ax,config) {
-        super(ax,config);
-        this.width = config.width || 0.1;
-        this.skewness = config.skewness || 2;
-        this.width2 = this.skewness * this.width;
-        this.follow = config.follow || false;
-    }
-
-    generate_triangle(pos) {
-        return [
-            {x: pos.x + this.width2*Math.sin(pos.heading), y: pos.y + this.width2*Math.cos(pos.heading)},
-            {x: pos.x + this.width*Math.sin(pos.heading + 2*Math.PI/3), y: pos.y + this.width*Math.cos(pos.heading + 2*Math.PI/3)},
-            {x: pos.x + this.width*Math.sin(pos.heading + 4*Math.PI/3), y: pos.y + this.width*Math.cos(pos.heading + 4*Math.PI/3)},
-            {x: pos.x + this.width2*Math.sin(pos.heading), y: pos.y + this.width2*Math.cos(pos.heading)}
-        ];
-    }
-
-    draw() {
-        if (!this.data_states[0].is_updated) { return; }
-        let data = Object.assign({},this.data_states[0].data);
-        if (this.data_states.length > 1) {
-            data.heading += this.data_states[1].data;
-        }
-        this.field.plot.select(`#${this.id}`).remove();
-        this.field.plot.append("path").attr("id",this.id)
-            .attr("class","poly")
-            .attr("style",`fill: ${this.fcolor}; stroke: ${this.scolor}`)
-            .attr("d",this.line(this.generate_triangle(data)));
-
-        if (this.follow) {
-            let x0 = this.field.xlim[0];
-            let x1 = this.field.xlim[1];
-            let y0 = this.field.ylim[0];
-            let y1 = this.field.ylim[1];
-            if (data.x < x0 || data.x > x1 || data.y < y0 || data.y > y1) {
-                this.field.set_xlim([data.x - (x1-x0)/2, data.x + (x1-x0)/2]);
-                this.field.set_ylim([data.y - (y1-y0)/2, data.y + (y1-y0)/2]);
-                this.request_redraw_axes();
-            }
-        }
-    }
-}
-
-class Text extends base.ElementBase {
-    constructor(field, config) {
-        super(field, config);
-
-        this.color = config.color || "#000000";
-        this.font_size = config.font_size || "medium";
-    }
-
-    setup() {
-        this.div = this.field.textarea.append("div").attr("id",this.id);
-    }
-
-    draw() {
-        if (this.data_states.reduce((acc, curr)=> acc && !curr.is_updated, true)) { return; }
-        let spans = this.div.selectAll("pre").data(this.data_states);
-        spans.enter().append("pre")
-            .merge(spans)
-            .html((d)=> d.data)
-            .attr("class", "text-element")
-            .attr("style",`color: ${this.color}; font-size: ${this.font_size}`)
-            .exit()
-            .remove();
-    }
-
-    static write_line(ax,config) {
-        let text = new this(ax,config);
-        new ds.TextDS(text,config);
-        return text;
-    }
-}
-
-class Matrix extends base.ElementBase {
-    draw() {
-        if (!this.data_states[0].is_updated) { return; }
-        let width = Math.abs(this.field.xtrans(this.data_states[0].dx) - this.field.xtrans(0));
-        let height = Math.abs(this.field.ytrans(this.data_states[0].dx) - this.field.ytrans(0));
-        let rects = this.field.plot.selectAll(`rect.${this.id}`)
-            .data(this.data_states[0].data);
-        rects.enter().append("rect").merge(rects)
-            .attr("class",`${this.id}`)
-            .attr("x",(d)=> this.field.xtrans(d.x) )
-            .attr("width",width)
-            .attr("y",(d)=> this.field.ytrans(d.y))
-            .attr("height",height)
-            .attr("style",(d)=> `fill: ${d.fill}`)
-            .exit()
-            .remove();
-    }
-
-    static plot(axis, data_class, config) {
-        let matplot = new this(axis,config);
-        new data_class(matplot, config);
-        return matplot;
-    }
-}
-
-// $ cat elements.js | grep -E -o "class ([^\W]*) extends"
-module.exports = exports = {
-    Line : Line,
-    Polygon : Polygon,
-    Pointer : Pointer,
-    Text : Text,
-    Matrix : Matrix
-};
-
-},{"./base":1,"./datastate":2,"d3-shape":16}],4:[function(require,module,exports){
-const StreamPlot = require("../../index.js")
-
-window.jQuery = window.$ = require("jquery");
-window.$ = require("jquery");
-
-console.log(window.$("#container"))
-var w = new StreamPlot.Window(window.$("#container"), {});
-
-var a = w.add_subplot({top:1,bottom:2,left:1,right:2},{
-  width : 600,
-  height : 400,
-  margins : {
-    top: 30, right: 20, bottom: 30, left: 50
-  },
-  xlim : [0,20],
-  ylim : [-1.0,1.0],
-  xlabel : "Time Since (sec)",
-  ylabel : "Value"
-});
-
-a.plot(StreamPlot.datastate.TimeSinceDS,{scolor:"steelblue",tmax_seconds:20,data_path:'voltage'});
-// Equivalent to:
-//   Line.plot(a,TimeSinceDS,{scolor:"steelblue",tmax_seconds:20,data_path:'voltage'});
-a.plot(StreamPlot.datastate.TimeSinceDS,{scolor:"red",tmax_seconds:20,data_path:'speed'});
-// Line.plot(a,TimeSinceDS,{scolor:"red",tmax_seconds:20,data_path:'speed'});
-
-
-StreamPlot.Textbox.write(w,{top:2,bottom:3,left:1,right:3},{title:"Platform.state"},[
-  {
-    data_path : "platform.state",
-    string_func : (obj) => `Neck Yaw: ${parseInt(obj.neck_yaw)} mrad`,
-    default_string: "Neck Yaw: N.A."
-  },{
-    data_path : "platform.state",
-    string_func : (obj) => `Neck Pitch: ${parseFloat(obj.neck_pitch)} mrad`,
-    default_string: "Neck Pitch: N.A."
-  }
-]);
-
-var a2 = w.add_subplot({top:1,bottom:2,left:2,right:3},{
-  width : 600,
-  height : 600,
-  margins : {
-    top: 30, right: 20, bottom: 30, left: 50
-  },
-  xlim : [-2.5,2.5],
-  ylim : [-0.05,4.95],
-  title : "Flow Map"
-});
-
-a2.imshow(StreamPlot.datastate.MatrixRGBBottomCenterDS,{data_path:'map',dimensions:[50,50]});
-// StreamPlot.element.Matrix.plot(a2,StreamPlot.datastate.MatrixRGBBottomCenterDS,{data_path:'map',dimensions:[50,50]});
-
-a2.plot(StreamPlot.datastate.TrajectoryDS,{scolor:"#00aa00",tmax_seconds:20,data_path:'current_dead_reckon'});
-// StreamPlot.element.Line.plot(a2,StreamPlot.datastate.TrajectoryDS,{scolor:"#00aa00",tmax_seconds:20,data_path:'current_dead_reckon'});
-
-StreamPlot.element.Pointer.plot(a2,StreamPlot.datastate.PoseDS,{fcolor:"#000000aa",data_path:'current_dead_reckon'})
-
-var e6 = new StreamPlot.element.Pointer(a2,{fcolor:"#aa0000aa", skewness: 4, width:0.05});
-var d6 = new StreamPlot.datastate.PoseDS(e6,{data_path:'current_dead_reckon'});
-var d7 = new StreamPlot.datastate.SingleValueDS(e6,{data_path:'platform.state',key:'neck_yaw'});
-
-StreamPlot.element.Line.plot(a2,StreamPlot.datastate.PathDS,{scolor:"#0000aa",data_path:'landscape'})
-
-w.init();
-w.start();
-
-
-// Emulate
-var t0 = Date.now();
-var iter = [...Array(50)]
-setInterval(()=>{
-  w.update({type:"voltage",data:Math.sin((Date.now()-t0)*5e-4)})
-},30)
-setInterval(()=>{
-  w.update({type:"speed",data:Math.sin((Date.now()-t0)*5e-4)**2})
-},30)
-setInterval(()=>{
-  t = (Date.now()-t0)*5e-4
-  w.update({type:"current_dead_reckon",data:{x:2*Math.sin(t),y:2-2*Math.cos(t),heading:Math.PI/2 - t}})
-},30)
-setInterval(()=>{
-  w.update({type:"map",data: iter.map((d)=>iter.map((d)=>randcolor()))})
-},1000)
-setTimeout(()=>{
-  w.update({type:"landscape",data:{path:[...Array(30)].map((d,i) => [0.1*i,0.01*i**2])}})
-},1000)
-setInterval(()=>{
-  t = (Date.now()-t0)*5e-4
-  w.update({type:"platform.state",data:{neck_yaw:t,neck_pitch:0.1*t}})
-},100)
-
-},{"../../index.js":5,"jquery":19}],5:[function(require,module,exports){
-const datastate = require("./datastate");
-const element = require("./element");
-const base = require("./base");
-const { Axis, Textbox } = require('./lib/Fields');
-const { Window } = require('./lib/Window');
-
-module.exports = exports = {
-    Window : Window,
-    Axis : Axis,
-    Textbox : Textbox,
-    element : element,
-    base : base,
-    datastate : datastate
-};
-
-},{"./base":1,"./datastate":2,"./element":3,"./lib/Fields":6,"./lib/Window":7}],6:[function(require,module,exports){
-const { Line, Matrix, Text } = require("../element");
+},{"./elements/Line":14,"./elements/Matrix":15,"./elements/Pointer":16,"./elements/Polygon":17,"./elements/Text":18,"fs":19}],5:[function(require,module,exports){
+const { Line, Matrix, Text } = require("./Element");
 const { scaleLinear } = require('d3-scale');
 const { axisBottom, axisLeft } = require('d3-axis');
 const d3select = require('d3-selection').select;
@@ -790,7 +444,7 @@ module.exports = exports = {
     Textbox: Textbox
 };
 
-},{"../element":3,"d3-axis":9,"d3-scale":14,"d3-selection":15}],7:[function(require,module,exports){
+},{"./Element":4,"d3-axis":21,"d3-scale":26,"d3-selection":27}],6:[function(require,module,exports){
 const { Axis } = require("./Fields");
 
 
@@ -853,7 +507,391 @@ module.exports = exports = {
     Window : Window
 };
 
-},{"./Fields":6}],8:[function(require,module,exports){
+},{"./Fields":5}],7:[function(require,module,exports){
+const { DataState } = require("../DataState")
+
+
+class MatrixRGBBottomCenter extends DataState {
+
+    constructor(element, {data_path, dimensions, length_scale}) {
+        super(element);
+        this.N = dimensions[0];
+        this.M = dimensions[1];
+        this.dx = length_scale || 0.1;
+        this.data_path = data_path;
+    }
+
+    to_hex(list) {
+        return '#' + list.map(this.__byte).join("");
+    }
+    __byte(number) {
+        let string = number.toString(16);
+        switch (string.length) {
+        case 0: return "00";
+        case 1: return "0"+string;
+        case 2: return string;
+        default: return string.slice(2);
+        }
+    }
+
+    update(datum) {
+        if (datum.type !== this.data_path) { return false; }
+
+        this.data = [];
+        datum.data.forEach((r,ri) => {
+            r.forEach((c,ci) => {
+                this.data.push({
+                    y : (this.N - 0.5 - ri) * this.dx,
+                    x : (ci - (this.M - 1) / 2 - 0.5) * this.dx,
+                    fill : this.to_hex(c)
+                });
+            });
+        });
+        return true;
+    }
+}
+
+module.exports = MatrixRGBBottomCenter
+
+},{"../DataState":3}],8:[function(require,module,exports){
+const { DataState } = require("../DataState")
+
+class Path extends DataState {
+
+    constructor(element, config) {
+        super(element);
+        this.data_path = config.data_path || "";
+    }
+
+    parse(position_vec) {
+        return {
+            x : position_vec[0],
+            y : position_vec[1]
+        };
+    }
+
+    // Gets landscape
+    update(datum) {
+        if (datum.type !== this.data_path) { return false; }
+
+        this.data = datum.data.path.map(p => this.parse(p));
+        return true;
+    }
+}
+module.exports = Path
+
+},{"../DataState":3}],9:[function(require,module,exports){
+const { DataState } = require("../DataState")
+
+
+class Pose extends DataState {
+
+    constructor(element, config) {
+        super(element);
+        this.data_path = config.data_path;
+    }
+
+    parse(position_state) {
+        return {
+            x : position_state.x,
+            y : position_state.y,
+            heading : position_state.heading,
+            vx : Math.sin(position_state.heading),
+            vy : Math.cos(position_state.heading)
+        };
+    }
+
+    // Gets landscape
+    update(datum) {
+        if (datum.type !== this.data_path) { return false; }
+
+        this.data = this.parse(datum.data);
+        return true;
+    }
+}
+
+module.exports = Pose
+
+},{"../DataState":3}],10:[function(require,module,exports){
+const { DataState } = require("../DataState")
+const op = require("object-path");
+
+class SingleValue extends DataState {
+
+    constructor(element, config) {
+        super(element);
+        this.data_path = config.data_path;
+        this.key = config.key;
+    }
+
+    // Gets landscape
+    update(datum) {
+        if (datum.type !== this.data_path) { return false; }
+
+        this.data = op.get(datum.data,this.key);
+        return true;
+    }
+}
+
+module.exports = SingleValue
+
+},{"../DataState":3,"object-path":32}],11:[function(require,module,exports){
+const { DataState } = require("../DataState")
+
+class Text extends DataState {
+
+    constructor(element, {data_path, string_func, default_string}) {
+        super(element);
+        this.data_path = data_path;
+        this.string_func = string_func || ((obj) => JSON.stringify(obj));
+        this.data = default_string || "No data";
+        this.is_updated = true;
+    }
+
+    update(datum) {
+        if (datum.type !== this.data_path) { return false; }
+        this.data = this.string_func(datum.data);
+        return true;
+    }
+}
+
+
+module.exports = Text
+
+},{"../DataState":3}],12:[function(require,module,exports){
+const { DataState } = require("../DataState")
+
+
+class TimeSince extends DataState {
+
+    constructor(element, config) {
+        super(element);
+
+        this.tmax = config.tmax_seconds || 20;
+        this.data_path = config.data_path || "";
+    }
+
+    update(datum) {
+        if (datum.type !== this.data_path) { return false; }
+        let now = Date.now();
+        this.data.push({
+            arrival : now,
+            y : datum.data
+        });
+        this.data.forEach((dat,i) => {
+            this.data[i].x = (now - this.data[i].arrival)*1e-3;
+        });
+        while (this.data.length > 0 && this.data[0].x > this.tmax) { this.data.shift(); }
+        return true;
+    }
+}
+
+module.exports = TimeSince
+
+},{"../DataState":3}],13:[function(require,module,exports){
+const TimeSince = require("./TimeSince")
+
+class Trajectory extends TimeSince {
+
+    parse(position_state) {
+        return {
+            x : position_state.x,
+            y : position_state.y
+        };
+    }
+
+    update(datum) {
+        if (datum.type !== this.data_path) { return false; }
+        let now = Date.now();
+        this.data.push(Object.assign({arrival:now},this.parse(datum.data)));
+        this.data.forEach((dat,i) => {
+            this.data[i].t = (now - this.data[i].arrival)*1e-3;
+        });
+        while (this.data.length > 0 && this.data[0].t > this.tmax) { this.data.shift(); }
+        return true;
+    }
+}
+
+module.exports = Trajectory
+
+},{"./TimeSince":12}],14:[function(require,module,exports){
+const { Element } = require("../Element")
+const d3line = require('d3-shape').line;
+
+
+class Line extends Element {
+    constructor(axis,config_obj) {
+        super(axis,config_obj);
+
+        // Set defaults
+        this.scolor = config_obj.scolor || "#000000";
+        this.fcolor = config_obj.fcolor || "#00000000";
+        this.sw = config_obj.sw || 2;
+        this.label = config_obj.label || "";
+        this.class = config_obj.class || "line";
+    }
+
+    setup() {
+        this.line = d3line()
+            .x((d) => { return this.field.xtrans(d.x); })
+            .y((d) => { return this.field.ytrans(d.y); });
+    }
+
+    draw() {
+        if (!this.data_states[0].is_updated) { return; }
+        this.field.plot.select(`#${this.id}`).remove();
+        this.field.plot.append("path").attr("id",this.id)
+            .attr("label",this.label)
+            .attr("class",this.class)
+            .attr("style",`fill: ${this.fcolor}; stroke: ${this.scolor}; stroke-width: ${this.sw};`)
+            .attr("d",this.line(this.data_states[0].data));
+    }
+
+    static plot(axis,data_class,config) {
+        let line = new this(axis,config);
+        new data_class(line,config);
+        return line;
+    }
+}
+
+module.exports = Line
+
+},{"../Element":4,"d3-shape":28}],15:[function(require,module,exports){
+const { Element } = require("../Element")
+
+class Matrix extends Element {
+    draw() {
+        if (!this.data_states[0].is_updated) { return; }
+        let width = Math.abs(this.field.xtrans(this.data_states[0].dx) - this.field.xtrans(0));
+        let height = Math.abs(this.field.ytrans(this.data_states[0].dx) - this.field.ytrans(0));
+        let rects = this.field.plot.selectAll(`rect.${this.id}`)
+            .data(this.data_states[0].data);
+        rects.enter().append("rect").merge(rects)
+            .attr("class",`${this.id}`)
+            .attr("x",(d)=> this.field.xtrans(d.x) )
+            .attr("width",width)
+            .attr("y",(d)=> this.field.ytrans(d.y))
+            .attr("height",height)
+            .attr("style",(d)=> `fill: ${d.fill}`)
+            .exit()
+            .remove();
+    }
+
+    static plot(axis, data_class, config) {
+        let matplot = new this(axis,config);
+        new data_class(matplot, config);
+        return matplot;
+    }
+}
+
+module.exports = Matrix
+
+},{"../Element":4}],16:[function(require,module,exports){
+const Polygon = require("./Polygon")
+
+class Pointer extends Polygon {
+
+    constructor(ax,config) {
+        super(ax,config);
+        this.width = config.width || 0.1;
+        this.skewness = config.skewness || 2;
+        this.width2 = this.skewness * this.width;
+        this.follow = config.follow || false;
+    }
+
+    generate_triangle(pos) {
+        return [
+            {x: pos.x + this.width2*Math.sin(pos.heading), y: pos.y + this.width2*Math.cos(pos.heading)},
+            {x: pos.x + this.width*Math.sin(pos.heading + 2*Math.PI/3), y: pos.y + this.width*Math.cos(pos.heading + 2*Math.PI/3)},
+            {x: pos.x + this.width*Math.sin(pos.heading + 4*Math.PI/3), y: pos.y + this.width*Math.cos(pos.heading + 4*Math.PI/3)},
+            {x: pos.x + this.width2*Math.sin(pos.heading), y: pos.y + this.width2*Math.cos(pos.heading)}
+        ];
+    }
+
+    draw() {
+        if (!this.data_states[0].is_updated) { return; }
+        let data = Object.assign({},this.data_states[0].data);
+        if (this.data_states.length > 1) {
+            data.heading += this.data_states[1].data;
+        }
+        this.field.plot.select(`#${this.id}`).remove();
+        this.field.plot.append("path").attr("id",this.id)
+            .attr("class","poly")
+            .attr("style",`fill: ${this.fcolor}; stroke: ${this.scolor}`)
+            .attr("d",this.line(this.generate_triangle(data)));
+
+        if (this.follow) {
+            let x0 = this.field.xlim[0];
+            let x1 = this.field.xlim[1];
+            let y0 = this.field.ylim[0];
+            let y1 = this.field.ylim[1];
+            if (data.x < x0 || data.x > x1 || data.y < y0 || data.y > y1) {
+                this.field.set_xlim([data.x - (x1-x0)/2, data.x + (x1-x0)/2]);
+                this.field.set_ylim([data.y - (y1-y0)/2, data.y + (y1-y0)/2]);
+                this.request_redraw_axes();
+            }
+        }
+    }
+}
+
+module.exports = Pointer
+
+},{"./Polygon":17}],17:[function(require,module,exports){
+const Line = require("./Line")
+
+class Polygon extends Line {
+    constructor(axis,config_obj) {
+        super(axis,config_obj);
+        // Reset defaults to filled with no line
+        this.class = config_obj.class || "poly";
+        this.fcolor = config_obj.fcolor || "#000000";
+        this.scolor = config_obj.scolor || "#00000000";
+    }
+}
+
+module.exports = Polygon
+
+},{"./Line":14}],18:[function(require,module,exports){
+const { Element } = require("../Element")
+const DataState = require("../DataState")
+
+
+class Text extends Element {
+    constructor(field, config) {
+        super(field, config);
+
+        this.color = config.color || "#000000";
+        this.font_size = config.font_size || "medium";
+    }
+
+    setup() {
+        this.div = this.field.textarea.append("div").attr("id",this.id);
+    }
+
+    draw() {
+        if (this.data_states.reduce((acc, curr)=> acc && !curr.is_updated, true)) { return; }
+        let spans = this.div.selectAll("pre").data(this.data_states);
+        spans.enter().append("pre")
+            .merge(spans)
+            .html((d)=> d.data)
+            .attr("class", "text-element")
+            .attr("style",`color: ${this.color}; font-size: ${this.font_size}`)
+            .exit()
+            .remove();
+    }
+
+    static write_line(ax,config) {
+        let text = new this(ax,config);
+        new DataState.Text(text,config);
+        return text;
+    }
+}
+
+module.exports = Text
+
+},{"../DataState":3,"../Element":4}],19:[function(require,module,exports){
+
+},{}],20:[function(require,module,exports){
 // https://d3js.org/d3-array/ v2.12.1 Copyright 2021 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -2037,7 +2075,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],9:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 // https://d3js.org/d3-axis/ v2.1.0 Copyright 2021 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -2233,7 +2271,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],10:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 // https://d3js.org/d3-color/ v2.0.0 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -2816,7 +2854,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],11:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 // https://d3js.org/d3-format/ v2.0.0 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -3161,7 +3199,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],12:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 // https://d3js.org/d3-interpolate/ v2.0.1 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-color')) :
@@ -3753,7 +3791,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-color":10}],13:[function(require,module,exports){
+},{"d3-color":22}],25:[function(require,module,exports){
 // https://d3js.org/d3-path/ v2.0.0 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -3896,7 +3934,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],14:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 // https://d3js.org/d3-scale/ v3.3.0 Copyright 2021 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-array'), require('d3-interpolate'), require('d3-format'), require('d3-time'), require('d3-time-format')) :
@@ -5101,7 +5139,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-array":8,"d3-format":11,"d3-interpolate":12,"d3-time":18,"d3-time-format":17}],15:[function(require,module,exports){
+},{"d3-array":20,"d3-format":23,"d3-interpolate":24,"d3-time":30,"d3-time-format":29}],27:[function(require,module,exports){
 // https://d3js.org/d3-selection/ v2.0.0 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -6102,7 +6140,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],16:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 // https://d3js.org/d3-shape/ v2.1.0 Copyright 2021 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-path')) :
@@ -8110,7 +8148,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-path":13}],17:[function(require,module,exports){
+},{"d3-path":25}],29:[function(require,module,exports){
 // https://d3js.org/d3-time-format/ v3.0.0 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-time')) :
@@ -8853,7 +8891,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-time":18}],18:[function(require,module,exports){
+},{"d3-time":30}],30:[function(require,module,exports){
 // https://d3js.org/d3-time/ v2.1.1 Copyright 2021 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-array')) :
@@ -9277,7 +9315,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-array":8}],19:[function(require,module,exports){
+},{"d3-array":20}],31:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.6.1
  * https://jquery.com/
@@ -20188,7 +20226,7 @@ if ( typeof noGlobal === "undefined" ) {
 return jQuery;
 } );
 
-},{}],20:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 (function (root, factory) {
   'use strict'
 
@@ -20510,4 +20548,4 @@ return jQuery;
   return mod
 })
 
-},{}]},{},[4]);
+},{}]},{},[1]);

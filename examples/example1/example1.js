@@ -18,11 +18,11 @@ var a = w.add_subplot({top:1,bottom:2,left:1,right:2},{
   ylabel : "Value"
 });
 
-a.plot(StreamPlot.datastate.TimeSinceDS,{scolor:"steelblue",tmax_seconds:20,data_path:'voltage'});
+a.plot(StreamPlot.DataState.TimeSince,{scolor:"steelblue",tmax_seconds:20,data_path:'voltage'});
 // Equivalent to:
-//   Line.plot(a,TimeSinceDS,{scolor:"steelblue",tmax_seconds:20,data_path:'voltage'});
-a.plot(StreamPlot.datastate.TimeSinceDS,{scolor:"red",tmax_seconds:20,data_path:'speed'});
-// Line.plot(a,TimeSinceDS,{scolor:"red",tmax_seconds:20,data_path:'speed'});
+//   Line.plot(a,TimeSince,{scolor:"steelblue",tmax_seconds:20,data_path:'voltage'});
+a.plot(StreamPlot.DataState.TimeSince,{scolor:"red",tmax_seconds:20,data_path:'speed'});
+// Line.plot(a,TimeSince,{scolor:"red",tmax_seconds:20,data_path:'speed'});
 
 
 StreamPlot.Textbox.write(w,{top:2,bottom:3,left:1,right:3},{title:"Platform.state"},[
@@ -48,19 +48,19 @@ var a2 = w.add_subplot({top:1,bottom:2,left:2,right:3},{
   title : "Flow Map"
 });
 
-a2.imshow(StreamPlot.datastate.MatrixRGBBottomCenterDS,{data_path:'map',dimensions:[50,50]});
-// StreamPlot.element.Matrix.plot(a2,StreamPlot.datastate.MatrixRGBBottomCenterDS,{data_path:'map',dimensions:[50,50]});
+a2.imshow(StreamPlot.DataState.MatrixRGBBottomCenter,{data_path:'map',dimensions:[50,50]});
+// StreamPlot.Element.Matrix.plot(a2,StreamPlot.DataState.MatrixRGBBottomCenter,{data_path:'map',dimensions:[50,50]});
 
-a2.plot(StreamPlot.datastate.TrajectoryDS,{scolor:"#00aa00",tmax_seconds:20,data_path:'current_dead_reckon'});
-// StreamPlot.element.Line.plot(a2,StreamPlot.datastate.TrajectoryDS,{scolor:"#00aa00",tmax_seconds:20,data_path:'current_dead_reckon'});
+a2.plot(StreamPlot.DataState.Trajectory,{scolor:"#00aa00",tmax_seconds:20,data_path:'current_dead_reckon'});
+// StreamPlot.Element.Line.plot(a2,StreamPlot.DataState.Trajectory,{scolor:"#00aa00",tmax_seconds:20,data_path:'current_dead_reckon'});
 
-StreamPlot.element.Pointer.plot(a2,StreamPlot.datastate.PoseDS,{fcolor:"#000000aa",data_path:'current_dead_reckon'})
+StreamPlot.Element.Pointer.plot(a2,StreamPlot.DataState.Pose,{fcolor:"#000000aa",data_path:'current_dead_reckon'})
 
-var e6 = new StreamPlot.element.Pointer(a2,{fcolor:"#aa0000aa", skewness: 4, width:0.05});
-var d6 = new StreamPlot.datastate.PoseDS(e6,{data_path:'current_dead_reckon'});
-var d7 = new StreamPlot.datastate.SingleValueDS(e6,{data_path:'platform.state',key:'neck_yaw'});
+var e6 = new StreamPlot.Element.Pointer(a2,{fcolor:"#aa0000aa", skewness: 4, width:0.05});
+var d6 = new StreamPlot.DataState.Pose(e6,{data_path:'current_dead_reckon'});
+var d7 = new StreamPlot.DataState.SingleValue(e6,{data_path:'platform.state',key:'neck_yaw'});
 
-StreamPlot.element.Line.plot(a2,StreamPlot.datastate.PathDS,{scolor:"#0000aa",data_path:'landscape'})
+StreamPlot.Element.Line.plot(a2,StreamPlot.DataState.Path,{scolor:"#0000aa",data_path:'landscape'})
 
 w.init();
 w.start();
