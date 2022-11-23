@@ -19,24 +19,9 @@ var a = w.add_subplot({top:1,bottom:2,left:1,right:2},{
   ylabel : "Value"
 });
 
-a.plot(DataState.TimeSince,{scolor:"steelblue",tmax_seconds:20,data_path:'voltage'});
-// Equivalent to:
-//   Line.plot(a,TimeSince,{scolor:"steelblue",tmax_seconds:20,data_path:'voltage'});
-a.plot(DataState.TimeSince,{scolor:"red",tmax_seconds:20,data_path:'speed'});
-// Line.plot(a,TimeSince,{scolor:"red",tmax_seconds:20,data_path:'speed'});
+let state_text = new DataState.SingleValue();
 
-
-Textbox.write(w,{top:2,bottom:3,left:1,right:3},{title:"Platform.state"},[
-  {
-    data_path : "platform.state",
-    string_func : (obj) => `Neck Yaw: ${parseInt(obj.neck_yaw)} mrad`,
-    default_string: "Neck Yaw: N.A."
-  },{
-    data_path : "platform.state",
-    string_func : (obj) => `Neck Pitch: ${parseFloat(obj.neck_pitch)} mrad`,
-    default_string: "Neck Pitch: N.A."
-  }
-]);
+Textbox.write(w, {top:2,bottom:3,left:1,right:3}, {title:"Platform.state"},[state_text]);
 
 var a2 = w.add_subplot({top:1,bottom:2,left:2,right:3},{
   width : 600,
@@ -49,52 +34,76 @@ var a2 = w.add_subplot({top:1,bottom:2,left:2,right:3},{
   title : "Flow Map"
 });
 
-a2.imshow(DataState.MatrixRGBBottomCenter,{data_path:'map',dimensions:[50,50]});
-//Element.Matrix.plot(a2, DataState.MatrixRGBBottomCenter,{data_path:'map',dimensions:[50,50]});
 
-a2.plot(DataState.Trajectory,{scolor:"#00aa00",tmax_seconds:20,data_path:'current_dead_reckon'});
-// Element.Line.plot(a2,DataState.Trajectory,{scolor:"#00aa00",tmax_seconds:20,data_path:'current_dead_reckon'});
 
-Element.Pointer.plot(a2,DataState.Pose,{fcolor:"#000000aa",data_path:'current_dead_reckon'})
+let voltage = new DataState.TimeSince({tmax_seconds:20});
+let current = new DataState.TimeSince({tmax_seconds:20});
 
-var e6 = new Element.Pointer(a2, {fcolor:"#aa0000aa", skewness: 4, width:0.05});
-var d6 = new DataState.Pose(e6, {data_path:'current_dead_reckon'});
+a.plot(voltage, {scolor:"steelblue"});
+a.plot(current, {scolor:"green"});
 
-//var d7 = new DataState.SingleValue(e6, {data_path:'platform.state',key:'neck_yaw'});
+let body_pose=new DataState.Pose();
+let head_pose=new DataState.Pose();
 
-Element.Line.plot(a2, DataState.Path,{scolor:"#0000aa",data_path:'landscape'})
+let trajectory = new DataState.Trajectory({tmax_seconds:5});
+
+a2.plot(trajectory, {scolor:"red"})
+
+
+let landscape = new DataState.Path()
+
+a2.plot(landscape, {scolor:"#0000aa"})
+
+a2.add_element(new Element.Pointer( body_pose, {fcolor:"#000000aa"}));
+a2.add_element(new Element.Pointer(head_pose, {fcolor:"#aa0000aa", skewness: 4, width:0.05}));
+
+let mat = new DataState.MatrixRGBBottomCenter({dimensions:[50,50]});
+
+a2.imshow(mat, {dimensions:[50,50]});
 
 w.init();
 w.start();
 
+
+setTimeout(()=>{
+  landscape.set([...Array(30)].map((d,i) => ({x: 0.1*i, y: 0.01*i**2})))
+},1000)
+
+
+setInterval(()=>{
+  voltage.push(Math.random())
+  current.push(Math.random()-1)
+}, 100)
+
+var iter = [...Array(50)]
 let randcolor = ()=>[parseInt(Math.random()*255), parseInt(Math.random()*255), parseInt(Math.random()*255)]
 
-// Emulate
+setInterval(()=>{
+  // DISCO!!
+  //mat.update(iter.map((d)=>iter.map((d)=>randcolor())));
+}, 1000)
+
+
 var t0 = Date.now();
-var iter = [...Array(50)]
 
 setInterval(()=>{
-  w.update({type:"voltage",data:Math.sin((Date.now()-t0)*5e-4)})
-},30)
-setInterval(()=>{
-  w.update({type:"speed",data:Math.sin((Date.now()-t0)*5e-4)**2})
-},30)
-setInterval(()=>{
   t = (Date.now()-t0)*5e-4
-  w.update({type:"current_dead_reckon",data:{x:2*Math.sin(t),y:2-2*Math.cos(t),heading:Math.PI/2 - t}})
-},30)
-setInterval(()=>{
-  w.update({type:"map",data: iter.map((d)=>iter.map((d)=>randcolor()))})
-},1000)
-setTimeout(()=>{
-  w.update({type:"landscape",data:{path:[...Array(30)].map((d,i) => [0.1*i,0.01*i**2])}})
-},1000)
-setInterval(()=>{
-  t = (Date.now()-t0)*5e-4
-  w.update({type:"platform.state",data:{neck_yaw:t,neck_pitch:0.1*t}})
-},100)
+  body_pose.x = 2*Math.sin(t);
+  body_pose.y = 2-2*Math.cos(t);
+  body_pose.heading = Math.PI/2 - t;
 
-},{"../../index.js":2,"jquery":31}],2:[function(require,module,exports){
+  body_pose.copy_to(head_pose)
+
+  head_pose.heading += 0.4*Math.sin(t*5)
+
+  trajectory.push(body_pose)
+
+},30)
+
+setInterval(()=>{
+  state_text.value="Heloo"
+}, 1000)
+},{"../../index.js":2,"jquery":29}],2:[function(require,module,exports){
 const DataState = require("./lib/DataState");
 const Element = require("./lib/Element");
 
@@ -113,13 +122,11 @@ module.exports = exports = {
 
 
 class DataState {
-    constructor(element) {
+    constructor() {
 
-        this.element = element;
         this.data = [];
-        this._is_updated = false;
+        this._is_updated = true;
 
-        this.connect_to_element();
     }
 
     get is_updated() {
@@ -128,46 +135,6 @@ class DataState {
     set is_updated(value) {
         this._is_updated = !!value;
     }
-
-    // -------------------------
-    //   Connectivity Methods
-    // -------------------------
-    connect_to_element() {
-        this.element.add_data_state(this);
-    }
-
-    // -------------------------
-    //   Opereration Methods
-    // -------------------------
-
-    /* Wrapper for .update(...) to track if the DataState has been modified
-   *
-   * @param [Object] datum - the datum to (potentially update with)
-   */
-    _update(datum) {
-        this.is_updated = this.update(datum) || this.is_updated;
-    }
-
-    /* Update the DataItem with new datum (Override me!)
-   *
-   * Each time a new datum arrives, this method is called with that datum,
-   *  it is up to you to check if the datum is relevent to this DataState,
-   *  and if it is, cache that datum somehow. At the end, return a boolean
-   *  indicating if the DataState was actually modified by this method call
-   *
-   * @param [Object] datum - the datum to (potentially update with)
-   * @returns [bool] - boolean reprepresenting if the DataItem was acutally updated
-   */
-    update(datum) { return false; }
-
-
-    init() {
-        this.setup();
-    }
-
-    /* Setup the data state (Override me)
-   */
-    setup() {}
 }
 
 
@@ -178,39 +145,32 @@ exports["MatrixRGBBottomCenter"] = require("./datastates/MatrixRGBBottomCenter")
 exports["Path"] = require("./datastates/Path")
 exports["Pose"] = require("./datastates/Pose")
 exports["SingleValue"] = require("./datastates/SingleValue")
-exports["Text"] = require("./datastates/Text")
 exports["Trajectory"] = require("./datastates/Trajectory")
 
 module.export = exports
 
-},{"./datastates/MatrixRGBBottomCenter":7,"./datastates/Path":8,"./datastates/Pose":9,"./datastates/SingleValue":10,"./datastates/Text":11,"./datastates/TimeSince":12,"./datastates/Trajectory":13}],4:[function(require,module,exports){
-var fs = require('fs');
+},{"./datastates/MatrixRGBBottomCenter":7,"./datastates/Path":8,"./datastates/Pose":9,"./datastates/SingleValue":10,"./datastates/TimeSince":11,"./datastates/Trajectory":12}],4:[function(require,module,exports){
 
 class Element {
-    constructor(field,{}) {
-        this.field = field;
-        this.data_states = [];
+    constructor(datastate, config={}) {
 
-        this.connect_to_field();
+        this.datastate = datastate;
+
     }
 
-    // -------------------------
-    //   Connectivity Methods
-    // -------------------------
-    connect_to_field() {
-        this.id = this.field.add_element(this);
-    }
 
-    add_data_state(data_state) {
-        this.data_states.push(data_state);
-    }
 
     // -------------------------
     //   Setup Methods
     // -------------------------
     init() {
         this.setup();
-        this.data_states.forEach((data_state) => {data_state.init();});
+    }
+
+    connect_to_field(field, id)
+    {
+        this.field = field;
+        this.id = id;
     }
 
     /* Setup the element (Override me)
@@ -219,30 +179,24 @@ class Element {
    */
     setup() {}
 
-    // -------------------------
-    //   Opereration Methods
-    // -------------------------
-    update(datum) {
-        this.data_states.forEach((data_state) => {data_state._update(datum);});
+
+    get needs_redraw()
+    {
+        let needs_redraw = this.datastate.is_updated;
+        this.datastate.is_updated = false;
+
+        return needs_redraw;
     }
 
     _draw() {
         this.draw();
-        this.data_states.forEach((data_state) => { data_state.is_updated = false; });
+        this.datastate.is_updated = false;
     }
-
-    /* Draw the graphical element (Override me)
-   */
-    draw() {}
-
-    /* Have parent redraw axes and labels on next draw
-   */
-    request_redraw_axes() {this.field.redraw = true;}
 
     /* Force this element to be redrawn on next draw
    */
     force_redraw() {
-        this.data_states.forEach((data_state) => { data_state.is_updated = true; });
+        this.datastate.is_updated = true;
     }
 }
 
@@ -258,7 +212,7 @@ exports["Matrix"] = require("./elements/Matrix")
 
 module.exports = exports;
 
-},{"./elements/Line":14,"./elements/Matrix":15,"./elements/Pointer":16,"./elements/Polygon":17,"./elements/Text":18,"fs":19}],5:[function(require,module,exports){
+},{"./elements/Line":13,"./elements/Matrix":14,"./elements/Pointer":15,"./elements/Polygon":16,"./elements/Text":17}],5:[function(require,module,exports){
 const { Line, Matrix, Text } = require("./Element");
 const { scaleLinear } = require('d3-scale');
 const { axisBottom, axisLeft } = require('d3-axis');
@@ -285,8 +239,10 @@ class Field {
 
     add_element(element) {
         let i = 1*this.elements.length;
+
+        element.connect_to_field(this, `field-${this.id}-element-${i}`)
         this.elements.push(element);
-        return `field-${this.id}-element-${i}`;
+        return element;
     }
 
     // -----------------------
@@ -366,13 +322,16 @@ class Axis extends Field {
     set_xlim(xlim) {
         this.xlim = xlim;
         this.xtrans.domain(xlim);
+        this.redraw = true;
     }
     set_ylim(ylim) {
         this.ylim = ylim;
         this.ytrans.domain(ylim);
+        this.redraw = true;
     }
 
     redraw_self() {
+
         this.plot.selectAll(".axis").remove();
         this.plot.selectAll(".label").remove();
 
@@ -406,12 +365,13 @@ class Axis extends Field {
     }
 
     plot(data_class,config) {
-        let line = Line.plot(this,data_class,config);
+        
+        let line = this.add_element(Line.plot(data_class,config));
         return line;
     }
 
     imshow(data_class,config) {
-        let matplot = Matrix.plot(this,data_class,config);
+        let matplot = this.add_element(Matrix.plot( data_class, config));
         return matplot;
     }
 }
@@ -433,9 +393,9 @@ class Textbox extends Field {
         }
     }
 
-    static write(window,bbox,self_config,text_line_config_list) {
+    static write(window,bbox,self_config, datastates) {
         let textbox = new this(window,bbox,self_config);
-        text_line_config_list.forEach((config) => { Text.write_line(textbox,config); });
+        datastates.forEach((d) => { textbox.add_element( Text.write_line(d) ) });
         return textbox;
     }
 }
@@ -447,7 +407,7 @@ module.exports = exports = {
     Textbox: Textbox
 };
 
-},{"./Element":4,"d3-axis":21,"d3-scale":26,"d3-selection":27}],6:[function(require,module,exports){
+},{"./Element":4,"d3-axis":19,"d3-scale":24,"d3-selection":25}],6:[function(require,module,exports){
 const { Axis } = require("./Fields");
 
 
@@ -516,12 +476,11 @@ const { DataState } = require("../DataState")
 
 class MatrixRGBBottomCenter extends DataState {
 
-    constructor(element, {data_path, dimensions, length_scale}) {
-        super(element);
+    constructor({dimensions, length_scale}) {
+        super();
         this.N = dimensions[0];
         this.M = dimensions[1];
         this.dx = length_scale || 0.1;
-        this.data_path = data_path;
     }
 
     to_hex(list) {
@@ -538,10 +497,11 @@ class MatrixRGBBottomCenter extends DataState {
     }
 
     update(datum) {
-        if (datum.type !== this.data_path) { return false; }
+        this.is_updated = true;
+
 
         this.data = [];
-        datum.data.forEach((r,ri) => {
+        datum.forEach((r,ri) => {
             r.forEach((c,ci) => {
                 this.data.push({
                     y : (this.N - 0.5 - ri) * this.dx,
@@ -561,24 +521,20 @@ const { DataState } = require("../DataState")
 
 class Path extends DataState {
 
-    constructor(element, config) {
-        super(element);
-        this.data_path = config.data_path || "";
+    constructor(config={}) {
+        super();
+
     }
 
-    parse(position_vec) {
-        return {
-            x : position_vec[0],
-            y : position_vec[1]
-        };
+
+    push(data) {
+        this.is_updated = true;
+        this.data.push(data)
     }
 
-    // Gets landscape
-    update(datum) {
-        if (datum.type !== this.data_path) { return false; }
 
-        this.data = datum.data.path.map(p => this.parse(p));
-        return true;
+    set(data) {
+        data.map(p => this.push(p));
     }
 }
 module.exports = Path
@@ -589,28 +545,35 @@ const { DataState } = require("../DataState")
 
 class Pose extends DataState {
 
-    constructor(element, config) {
-        super(element);
-        this.data_path = config.data_path;
+    constructor() {
+        super();
+
+        this._x=null
+        this._y=null
+        this._heading=null
+
     }
 
-    parse(position_state) {
-        return {
-            x : position_state.x,
-            y : position_state.y,
-            heading : position_state.heading,
-            vx : Math.sin(position_state.heading),
-            vy : Math.cos(position_state.heading)
-        };
+    set x(v) { this.is_updated = true; this._x = v }
+    get x() { return this._x }
+
+    set y(v) { this.is_updated = true; this._y = v }
+    get y() { return this._y }
+
+    set heading(v) { 
+        this.is_updated = true; 
+        this._heading = v 
     }
 
-    // Gets landscape
-    update(datum) {
-        if (datum.type !== this.data_path) { return false; }
+    get heading() { return this._heading }
 
-        this.data = this.parse(datum.data);
-        return true;
+    copy_to(other)
+    {
+        other.x = this.x;
+        other.y = this.y;
+        other.heading = this.heading;
     }
+
 }
 
 module.exports = Pose
@@ -621,67 +584,47 @@ const op = require("object-path");
 
 class SingleValue extends DataState {
 
-    constructor(element, config) {
-        super(element);
-        this.data_path = config.data_path;
-        this.key = config.key;
+    constructor() {
+        super();
+        this._value = null;
     }
 
-    // Gets landscape
-    update(datum) {
-        if (datum.type !== this.data_path) { return false; }
+    set value(v)
+    {
+        this.is_updated = true;
+        this._value = v;
+    }
 
-        this.data = op.get(datum.data,this.key);
-        return true;
+    get value()
+    {
+        return this._value;
     }
 }
 
 module.exports = SingleValue
 
-},{"../DataState":3,"object-path":32}],11:[function(require,module,exports){
-const { DataState } = require("../DataState")
-
-class Text extends DataState {
-
-    constructor(element, {data_path, string_func, default_string}) {
-        super(element);
-        this.data_path = data_path;
-        this.string_func = string_func || ((obj) => JSON.stringify(obj));
-        this.data = default_string || "No data";
-        this.is_updated = true;
-    }
-
-    update(datum) {
-        if (datum.type !== this.data_path) { return false; }
-        this.data = this.string_func(datum.data);
-        return true;
-    }
-}
-
-
-module.exports = Text
-
-},{"../DataState":3}],12:[function(require,module,exports){
+},{"../DataState":3,"object-path":30}],11:[function(require,module,exports){
 const { DataState } = require("../DataState")
 
 
 class TimeSince extends DataState {
 
-    constructor(element, config) {
-        super(element);
+    constructor(config={}) {
+        super();
 
         this.tmax = config.tmax_seconds || 20;
-        this.data_path = config.data_path || "";
+
     }
 
-    update(datum) {
-        if (datum.type !== this.data_path) { return false; }
+    push(y) {
+        this.is_updated = true;
+
         let now = Date.now();
         this.data.push({
             arrival : now,
-            y : datum.data
+            y : y
         });
-        this.data.forEach((dat,i) => {
+        this.data.forEach((dat, i) => {
             this.data[i].x = (now - this.data[i].arrival)*1e-3;
         });
         while (this.data.length > 0 && this.data[0].x > this.tmax) { this.data.shift(); }
@@ -691,40 +634,38 @@ class TimeSince extends DataState {
 
 module.exports = TimeSince
 
-},{"../DataState":3}],13:[function(require,module,exports){
+},{"../DataState":3}],12:[function(require,module,exports){
 const TimeSince = require("./TimeSince")
 
 class Trajectory extends TimeSince {
 
-    parse(position_state) {
-        return {
-            x : position_state.x,
-            y : position_state.y
-        };
-    }
 
-    update(datum) {
-        if (datum.type !== this.data_path) { return false; }
-        let now = Date.now();
-        this.data.push(Object.assign({arrival:now},this.parse(datum.data)));
+    push({x, y}) {
+
+        this.is_updated = true;
+        
+        let arrival = Date.now();
+        this.data.push({arrival, x, y});
+
         this.data.forEach((dat,i) => {
-            this.data[i].t = (now - this.data[i].arrival)*1e-3;
+            this.data[i].t = (arrival - this.data[i].arrival)*1e-3;
         });
         while (this.data.length > 0 && this.data[0].t > this.tmax) { this.data.shift(); }
+
         return true;
     }
 }
 
 module.exports = Trajectory
 
-},{"./TimeSince":12}],14:[function(require,module,exports){
+},{"./TimeSince":11}],13:[function(require,module,exports){
 const { Element } = require("../Element")
 const d3line = require('d3-shape').line;
 
 
 class Line extends Element {
-    constructor(axis,config_obj) {
-        super(axis,config_obj);
+    constructor(datastate, config_obj={}) {
+        super(datastate, config_obj);
 
         // Set defaults
         this.scolor = config_obj.scolor || "#000000";
@@ -741,34 +682,33 @@ class Line extends Element {
     }
 
     draw() {
-        if (!this.data_states[0].is_updated) { return; }
+        if (!this.datastate.is_updated) { return; }
         this.field.plot.select(`#${this.id}`).remove();
-        this.field.plot.append("path").attr("id",this.id)
+        this.field.plot.append("path").attr("id", this.id)
             .attr("label",this.label)
             .attr("class",this.class)
             .attr("style",`fill: ${this.fcolor}; stroke: ${this.scolor}; stroke-width: ${this.sw};`)
-            .attr("d",this.line(this.data_states[0].data));
+            .attr("d",this.line(this.datastate.data));
     }
 
-    static plot(axis,data_class,config) {
-        let line = new this(axis,config);
-        new data_class(line,config);
+    static plot(axis,datastate,config) {
+        let line = new this(axis, datastate,config);
         return line;
     }
 }
 
 module.exports = Line
 
-},{"../Element":4,"d3-shape":28}],15:[function(require,module,exports){
+},{"../Element":4,"d3-shape":26}],14:[function(require,module,exports){
 const { Element } = require("../Element")
 
 class Matrix extends Element {
     draw() {
-        if (!this.data_states[0].is_updated) { return; }
-        let width = Math.abs(this.field.xtrans(this.data_states[0].dx) - this.field.xtrans(0));
-        let height = Math.abs(this.field.ytrans(this.data_states[0].dx) - this.field.ytrans(0));
+        if (!this.datastate.is_updated) { return; }
+        let width = Math.abs(this.field.xtrans(this.datastate.dx) - this.field.xtrans(0));
+        let height = Math.abs(this.field.ytrans(this.datastate.dx) - this.field.ytrans(0));
         let rects = this.field.plot.selectAll(`rect.${this.id}`)
-            .data(this.data_states[0].data);
+            .data(this.datastate.data);
         rects.enter().append("rect").merge(rects)
             .attr("class",`${this.id}`)
             .attr("x",(d)=> this.field.xtrans(d.x) )
@@ -780,26 +720,26 @@ class Matrix extends Element {
             .remove();
     }
 
-    static plot(axis, data_class, config) {
-        let matplot = new this(axis,config);
-        new data_class(matplot, config);
+    static plot(axis, datastate, config) {
+        let matplot = new this(axis, datastate, config);
         return matplot;
     }
 }
 
 module.exports = Matrix
 
-},{"../Element":4}],16:[function(require,module,exports){
+},{"../Element":4}],15:[function(require,module,exports){
 const Polygon = require("./Polygon")
 
 class Pointer extends Polygon {
 
-    constructor(ax,config) {
-        super(ax,config);
+    constructor(datastate, config) {
+        super(datastate,config);
         this.width = config.width || 0.1;
         this.skewness = config.skewness || 2;
         this.width2 = this.skewness * this.width;
         this.follow = config.follow || false;
+        this.datastate = datastate;
     }
 
     generate_triangle(pos) {
@@ -812,25 +752,22 @@ class Pointer extends Polygon {
     }
 
     draw() {
-        if (!this.data_states[0].is_updated) { return; }
-        let data = Object.assign({},this.data_states[0].data);
-        if (this.data_states.length > 1) {
-            data.heading += this.data_states[1].data;
-        }
+        if (!this.datastate.is_updated) { return; }
+
         this.field.plot.select(`#${this.id}`).remove();
         this.field.plot.append("path").attr("id",this.id)
             .attr("class","poly")
             .attr("style",`fill: ${this.fcolor}; stroke: ${this.scolor}`)
-            .attr("d",this.line(this.generate_triangle(data)));
+            .attr("d",this.line(this.generate_triangle(this.datastate)));
 
         if (this.follow) {
             let x0 = this.field.xlim[0];
             let x1 = this.field.xlim[1];
             let y0 = this.field.ylim[0];
             let y1 = this.field.ylim[1];
-            if (data.x < x0 || data.x > x1 || data.y < y0 || data.y > y1) {
-                this.field.set_xlim([data.x - (x1-x0)/2, data.x + (x1-x0)/2]);
-                this.field.set_ylim([data.y - (y1-y0)/2, data.y + (y1-y0)/2]);
+            if (this.datastate.x < x0 || this.datastate.x > x1 || this.datastate.y < y0 || this.datastate.y > y1) {
+                this.field.set_xlim([this.datastate.x - (x1-x0)/2, this.datastate.x + (x1-x0)/2]);
+                this.field.set_ylim([this.datastate.y - (y1-y0)/2, this.datastate.y + (y1-y0)/2]);
                 this.request_redraw_axes();
             }
         }
@@ -839,12 +776,12 @@ class Pointer extends Polygon {
 
 module.exports = Pointer
 
-},{"./Polygon":17}],17:[function(require,module,exports){
+},{"./Polygon":16}],16:[function(require,module,exports){
 const Line = require("./Line")
 
 class Polygon extends Line {
-    constructor(axis,config_obj) {
-        super(axis,config_obj);
+    constructor(datastate, config_obj={}) {
+        super(datastate, config_obj);
         // Reset defaults to filled with no line
         this.class = config_obj.class || "poly";
         this.fcolor = config_obj.fcolor || "#000000";
@@ -854,47 +791,48 @@ class Polygon extends Line {
 
 module.exports = Polygon
 
-},{"./Line":14}],18:[function(require,module,exports){
+},{"./Line":13}],17:[function(require,module,exports){
 const { Element } = require("../Element")
 const DataState = require("../DataState")
 
 
 class Text extends Element {
-    constructor(field, config) {
-        super(field, config);
+    constructor(datastate, config={}) {
+        super(datastate, config);
 
         this.color = config.color || "#000000";
         this.font_size = config.font_size || "medium";
     }
 
     setup() {
-        this.div = this.field.textarea.append("div").attr("id",this.id);
+        
+        this.div = this.field.textarea.append("div").attr("id", this.id);
     }
 
     draw() {
-        if (this.data_states.reduce((acc, curr)=> acc && !curr.is_updated, true)) { return; }
-        let spans = this.div.selectAll("pre").data(this.data_states);
+        
+        if (!this.datastate.is_updated) return
+
+        let spans = this.div.selectAll("pre").data([this.datastate]);
         spans.enter().append("pre")
             .merge(spans)
-            .html((d)=> d.data)
+            .html((d)=> d.value || "None")
             .attr("class", "text-element")
             .attr("style",`color: ${this.color}; font-size: ${this.font_size}`)
             .exit()
             .remove();
+
     }
 
-    static write_line(ax,config) {
-        let text = new this(ax,config);
-        new DataState.Text(text,config);
+    static write_line(datastate, config) {
+        let text = new this(datastate, config);
         return text;
     }
 }
 
 module.exports = Text
 
-},{"../DataState":3,"../Element":4}],19:[function(require,module,exports){
-
-},{}],20:[function(require,module,exports){
+},{"../DataState":3,"../Element":4}],18:[function(require,module,exports){
 // https://d3js.org/d3-array/ v2.12.1 Copyright 2021 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -2078,7 +2016,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],21:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 // https://d3js.org/d3-axis/ v2.1.0 Copyright 2021 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -2274,7 +2212,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],22:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 // https://d3js.org/d3-color/ v2.0.0 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -2857,7 +2795,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],23:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 // https://d3js.org/d3-format/ v2.0.0 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -3202,7 +3140,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],24:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 // https://d3js.org/d3-interpolate/ v2.0.1 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-color')) :
@@ -3794,7 +3732,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-color":22}],25:[function(require,module,exports){
+},{"d3-color":20}],23:[function(require,module,exports){
 // https://d3js.org/d3-path/ v2.0.0 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -3937,7 +3875,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],26:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 // https://d3js.org/d3-scale/ v3.3.0 Copyright 2021 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-array'), require('d3-interpolate'), require('d3-format'), require('d3-time'), require('d3-time-format')) :
@@ -5142,7 +5080,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-array":20,"d3-format":23,"d3-interpolate":24,"d3-time":30,"d3-time-format":29}],27:[function(require,module,exports){
+},{"d3-array":18,"d3-format":21,"d3-interpolate":22,"d3-time":28,"d3-time-format":27}],25:[function(require,module,exports){
 // https://d3js.org/d3-selection/ v2.0.0 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -6143,7 +6081,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],28:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 // https://d3js.org/d3-shape/ v2.1.0 Copyright 2021 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-path')) :
@@ -8151,7 +8089,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-path":25}],29:[function(require,module,exports){
+},{"d3-path":23}],27:[function(require,module,exports){
 // https://d3js.org/d3-time-format/ v3.0.0 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-time')) :
@@ -8894,7 +8832,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-time":30}],30:[function(require,module,exports){
+},{"d3-time":28}],28:[function(require,module,exports){
 // https://d3js.org/d3-time/ v2.1.1 Copyright 2021 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-array')) :
@@ -9318,7 +9256,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-array":20}],31:[function(require,module,exports){
+},{"d3-array":18}],29:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.6.1
  * https://jquery.com/
@@ -20229,7 +20167,7 @@ if ( typeof noGlobal === "undefined" ) {
 return jQuery;
 } );
 
-},{}],32:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 (function (root, factory) {
   'use strict'
 

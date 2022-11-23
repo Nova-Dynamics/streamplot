@@ -1,1 +1,0 @@
-npx browserify example1.js > bundle.js
