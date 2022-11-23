@@ -21,7 +21,12 @@ var a = w.add_subplot({top:1,bottom:2,left:1,right:2},{
 
 let state_text = new DataState.SingleValue();
 
-Textbox.write(w, {top:2,bottom:3,left:1,right:3}, {title:"Platform.state"},[state_text]);
+Textbox.write(w, {top:2,bottom:3,left:1,right:3}, {title:"Platform.state"},[
+  {
+    datastate: state_text, 
+    config: { postprocessor: (t)=>t+" yee yee", color: "#aa00ff"}
+  }
+]);
 
 var a2 = w.add_subplot({top:1,bottom:2,left:2,right:3},{
   width : 600,
@@ -54,7 +59,7 @@ let landscape = new DataState.Path()
 
 a2.plot(landscape, {scolor:"#0000aa"})
 
-a2.add_element(new Element.Pointer( body_pose, {fcolor:"#000000aa"}));
+a2.add_element(new Element.Pointer(body_pose, {fcolor:"#000000aa"}));
 a2.add_element(new Element.Pointer(head_pose, {fcolor:"#aa0000aa", skewness: 4, width:0.05}));
 
 let mat = new DataState.MatrixRGBBottomCenter({dimensions:[50,50]});
@@ -395,7 +400,7 @@ class Textbox extends Field {
 
     static write(window,bbox,self_config, datastates) {
         let textbox = new this(window,bbox,self_config);
-        datastates.forEach((d) => { textbox.add_element( Text.write_line(d) ) });
+        datastates.forEach(({datastate, config={}}) => { textbox.add_element( Text.write_line(datastate, config) ) });
         return textbox;
     }
 }
@@ -605,6 +610,7 @@ module.exports = SingleValue
 
 },{"../DataState":3,"object-path":30}],11:[function(require,module,exports){
 const { DataState } = require("../DataState")
+const SingleValue = require("./SingleValue")
 
 
 class TimeSince extends DataState {
@@ -613,11 +619,15 @@ class TimeSince extends DataState {
         super();
 
         this.tmax = config.tmax_seconds || 20;
-
+        this._latest = new SingleValue()
     }
+
+    get latest() { return this._latest }
 
     push(y) {
         this.is_updated = true;
+
+        this._latest.value = y;
 
         let now = Date.now();
         this.data.push({
@@ -634,7 +644,7 @@ class TimeSince extends DataState {
 
 module.exports = TimeSince
 
-},{"../DataState":3}],12:[function(require,module,exports){
+},{"../DataState":3,"./SingleValue":10}],12:[function(require,module,exports){
 const TimeSince = require("./TimeSince")
 
 class Trajectory extends TimeSince {
@@ -802,6 +812,8 @@ class Text extends Element {
 
         this.color = config.color || "#000000";
         this.font_size = config.font_size || "medium";
+        this.postprocessor = config.postprocessor || ((v)=>v);
+        this.default_value = config.default_value || "None";
     }
 
     setup() {
@@ -816,7 +828,7 @@ class Text extends Element {
         let spans = this.div.selectAll("pre").data([this.datastate]);
         spans.enter().append("pre")
             .merge(spans)
-            .html((d)=> d.value || "None")
+            .html((d) => this.postprocessor(d.value || this.default_value) )
             .attr("class", "text-element")
             .attr("style",`color: ${this.color}; font-size: ${this.font_size}`)
             .exit()

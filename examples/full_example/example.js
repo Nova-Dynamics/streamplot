@@ -20,7 +20,12 @@ var a = w.add_subplot({top:1,bottom:2,left:1,right:2},{
 
 let state_text = new DataState.SingleValue();
 
-Textbox.write(w, {top:2,bottom:3,left:1,right:3}, {title:"Platform.state"},[state_text]);
+Textbox.write(w, {top:2,bottom:3,left:1,right:3}, {title:"Platform.state"},[
+  {
+    datastate: state_text, 
+    config: { postprocessor: (t)=>t+" yee yee", color: "#aa00ff"}
+  }
+]);
 
 var a2 = w.add_subplot({top:1,bottom:2,left:2,right:3},{
   width : 600,
