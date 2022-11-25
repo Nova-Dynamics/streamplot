@@ -25,21 +25,32 @@ let circle_pos = new DataState.Point();
 
 circle_pos.x = 3
 circle_pos.y = 2
-a.add_element(new Element.Circle(circle_pos, {fcolor:"#00ff00aa"}));
+a.add_element(new Element.SVGRenderer(circle_pos, {fcolor:"#00ff00aa"}));
 
 
+let landscape = new DataState.Path()
+
+a.plot(landscape, {scolor:"#0000aa"})
 
 w.init();
 w.start();
 
 var t0 = Date.now();
-setInterval(() => {
-  t = (Date.now()-t0)*5e-4
-  circle_pos.x = Math.sin(t);
-  circle_pos.y = 1-Math.cos(t);
-}, 10);
 
-},{"../../index.js":2,"jquery":31}],2:[function(require,module,exports){
+
+// setInterval(()=>{
+
+//   landscape.set([...Array(30)].map((d,i) => ({x: 3*Math.sin(t)+0.1*i, y: 0.01*i**2})))
+// },100)
+
+
+// setInterval(() => {
+//   t = (Date.now()-t0)*5e-4
+//   circle_pos.x = Math.sin(t);
+//   circle_pos.y = 1-Math.cos(t);
+// }, 10);
+
+},{"../../index.js":2,"jquery":33}],2:[function(require,module,exports){
 const DataState = require("./lib/DataState");
 const Element = require("./lib/Element");
 
@@ -141,6 +152,7 @@ exports["Element"] = Element;
 
 exports["Line"] = require("./elements/Line")
 exports["Circle"] = require("./elements/Circle")
+exports["SVGRenderer"] = require("./elements/SVGRenderer")
 exports["Polygon"] = require("./elements/Polygon")
 exports["Pointer"] = require("./elements/Pointer")
 exports["Text"] = require("./elements/Text")
@@ -150,7 +162,7 @@ exports["Matrix"] = require("./elements/Matrix")
 
 module.exports = exports;
 
-},{"./elements/Circle":14,"./elements/Line":15,"./elements/Matrix":16,"./elements/Pointer":17,"./elements/Polygon":18,"./elements/Text":19}],5:[function(require,module,exports){
+},{"./elements/Circle":14,"./elements/Line":15,"./elements/Matrix":16,"./elements/Pointer":17,"./elements/Polygon":18,"./elements/SVGRenderer":19,"./elements/Text":20}],5:[function(require,module,exports){
 const { Line, Matrix, Text } = require("./Element");
 const { scaleLinear } = require('d3-scale');
 const { axisBottom, axisLeft } = require('d3-axis');
@@ -345,7 +357,7 @@ module.exports = exports = {
     Textbox: Textbox
 };
 
-},{"./Element":4,"d3-axis":21,"d3-scale":26,"d3-selection":27}],6:[function(require,module,exports){
+},{"./Element":4,"d3-axis":23,"d3-scale":28,"d3-selection":29}],6:[function(require,module,exports){
 const { Axis } = require("./Fields");
 
 
@@ -470,9 +482,13 @@ class Path extends DataState {
         this.data.push(p)
     }
 
+    clear() {
+        this.data = []
+    }
 
     set(data) {
-        data.map(p => this.push(p));
+        this.clear()
+        data.forEach(p => this.push(p));
     }
 }
 module.exports = Path
@@ -564,7 +580,7 @@ class SingleValue extends DataState {
 
 module.exports = SingleValue
 
-},{"../DataState":3,"object-path":32}],12:[function(require,module,exports){
+},{"../DataState":3,"object-path":34}],12:[function(require,module,exports){
 const { DataState } = require("../DataState")
 const SingleValue = require("./SingleValue")
 
@@ -626,7 +642,6 @@ module.exports = Trajectory
 
 },{"./TimeSince":12}],14:[function(require,module,exports){
 const { Element } = require("../Element")
-const d3line = require('d3-shape').line;
 
 
 class Circle extends Element {
@@ -639,12 +654,6 @@ class Circle extends Element {
         this.label = config_obj.label || "";
         this.radius = config_obj.radius || 10;
 
-    }
-
-    setup() {
-        this.line = d3line()
-            .x((d) => { return this.field.xtrans(d.x); })
-            .y((d) => { return this.field.ytrans(d.y); });
     }
 
     draw() {
@@ -669,7 +678,7 @@ class Circle extends Element {
 
 module.exports = Circle
 
-},{"../Element":4,"d3-shape":28}],15:[function(require,module,exports){
+},{"../Element":4}],15:[function(require,module,exports){
 const { Element } = require("../Element")
 const d3line = require('d3-shape').line;
 
@@ -695,7 +704,8 @@ class Line extends Element {
     draw() {
         if (!this.datastate.is_updated) { return; }
         this.field.plot.select(`#${this.id}`).remove();
-        this.field.plot.append("path").attr("id", this.id)
+        this.field.plot.append("path")
+            .attr("id", this.id)
             .attr("label",this.label)
             .attr("class",this.class)
             .attr("style",`fill: ${this.fcolor}; stroke: ${this.scolor}; stroke-width: ${this.sw};`)
@@ -703,14 +713,14 @@ class Line extends Element {
     }
 
     static plot(axis,datastate,config) {
-        let line = new this(axis, datastate,config);
+        let line = new this(axis, datastate, config);
         return line;
     }
 }
 
 module.exports = Line
 
-},{"../Element":4,"d3-shape":28}],16:[function(require,module,exports){
+},{"../Element":4,"d3-shape":30}],16:[function(require,module,exports){
 const { Element } = require("../Element")
 
 class Matrix extends Element {
@@ -804,6 +814,44 @@ module.exports = Polygon
 
 },{"./Line":15}],19:[function(require,module,exports){
 const { Element } = require("../Element")
+const SVG = require("./resources/SVG")
+
+
+class SVGRenderer extends Element {
+    constructor(datastate, config_obj={}) {
+        super(datastate, config_obj);
+
+        // Set defaults
+        this.scolor = config_obj.scolor || "#000000";
+        this.fcolor = config_obj.fcolor || "#00000000";
+        this.label = config_obj.label || "";
+        this.radius = config_obj.radius || 10;
+
+    }
+
+    draw() {
+        if (!this.datastate.is_updated) { return; }
+
+        //Probably not the way to do this.
+        //https://stackoverflow.com/questions/20688115/d3-js-circle-plotting-does-not-working-properly-while-trying-to-load-after-first
+
+        this.field.plot.select(`#${this.id}`).remove();
+        this.field.plot.append("g")
+            .attr("id", this.id)
+            .attr("x", this.field.xtrans(this.datastate.x))
+            .attr("y", this.field.ytrans(this.datastate.y))
+            .html( SVG.LocationPinIcon )
+ 
+
+    }
+
+
+}
+
+module.exports = SVGRenderer
+
+},{"../Element":4,"./resources/SVG":21}],20:[function(require,module,exports){
+const { Element } = require("../Element")
 const DataState = require("../DataState")
 
 
@@ -845,7 +893,15 @@ class Text extends Element {
 
 module.exports = Text
 
-},{"../DataState":3,"../Element":4}],20:[function(require,module,exports){
+},{"../DataState":3,"../Element":4}],21:[function(require,module,exports){
+
+
+class SVG {
+    get LocationPinIcon() { `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 288 512"><!-- Font Awesome Pro 5.15.4 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) --><path d="M112 316.94v156.69l22.02 33.02c4.75 7.12 15.22 7.12 19.97 0L176 473.63V316.94c-10.39 1.92-21.06 3.06-32 3.06s-21.61-1.14-32-3.06zM144 0C64.47 0 0 64.47 0 144s64.47 144 144 144 144-64.47 144-144S223.53 0 144 0zm0 76c-37.5 0-68 30.5-68 68 0 6.62-5.38 12-12 12s-12-5.38-12-12c0-50.73 41.28-92 92-92 6.62 0 12 5.38 12 12s-5.38 12-12 12z"/></svg>` }
+}
+
+module.exports = SVG
+},{}],22:[function(require,module,exports){
 // https://d3js.org/d3-array/ v2.12.1 Copyright 2021 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -2029,7 +2085,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],21:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 // https://d3js.org/d3-axis/ v2.1.0 Copyright 2021 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -2225,7 +2281,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],22:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 // https://d3js.org/d3-color/ v2.0.0 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -2808,7 +2864,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],23:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 // https://d3js.org/d3-format/ v2.0.0 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -3153,7 +3209,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{}],24:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 // https://d3js.org/d3-interpolate/ v2.0.1 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-color')) :
@@ -3745,7 +3801,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-color":22}],25:[function(require,module,exports){
+},{"d3-color":24}],27:[function(require,module,exports){
 // https://d3js.org/d3-path/ v2.0.0 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -3888,7 +3944,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],26:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 // https://d3js.org/d3-scale/ v3.3.0 Copyright 2021 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-array'), require('d3-interpolate'), require('d3-format'), require('d3-time'), require('d3-time-format')) :
@@ -5093,7 +5149,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-array":20,"d3-format":23,"d3-interpolate":24,"d3-time":30,"d3-time-format":29}],27:[function(require,module,exports){
+},{"d3-array":22,"d3-format":25,"d3-interpolate":26,"d3-time":32,"d3-time-format":31}],29:[function(require,module,exports){
 // https://d3js.org/d3-selection/ v2.0.0 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -6094,7 +6150,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{}],28:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 // https://d3js.org/d3-shape/ v2.1.0 Copyright 2021 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-path')) :
@@ -8102,7 +8158,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-path":25}],29:[function(require,module,exports){
+},{"d3-path":27}],31:[function(require,module,exports){
 // https://d3js.org/d3-time-format/ v3.0.0 Copyright 2020 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-time')) :
@@ -8845,7 +8901,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 }));
 
-},{"d3-time":30}],30:[function(require,module,exports){
+},{"d3-time":32}],32:[function(require,module,exports){
 // https://d3js.org/d3-time/ v2.1.1 Copyright 2021 Mike Bostock
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-array')) :
@@ -9269,7 +9325,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
-},{"d3-array":20}],31:[function(require,module,exports){
+},{"d3-array":22}],33:[function(require,module,exports){
 /*!
  * jQuery JavaScript Library v3.6.1
  * https://jquery.com/
@@ -20180,7 +20236,7 @@ if ( typeof noGlobal === "undefined" ) {
 return jQuery;
 } );
 
-},{}],32:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 (function (root, factory) {
   'use strict'
 

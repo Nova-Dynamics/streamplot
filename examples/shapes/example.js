@@ -24,16 +24,27 @@ let circle_pos = new DataState.Point();
 
 circle_pos.x = 3
 circle_pos.y = 2
-a.add_element(new Element.Circle(circle_pos, {fcolor:"#00ff00aa"}));
+a.add_element(new Element.SVGRenderer(circle_pos, {fcolor:"#00ff00aa"}));
 
 
+let landscape = new DataState.Path()
+
+a.plot(landscape, {scolor:"#0000aa"})
 
 w.init();
 w.start();
 
 var t0 = Date.now();
-setInterval(() => {
-  t = (Date.now()-t0)*5e-4
-  circle_pos.x = Math.sin(t);
-  circle_pos.y = 1-Math.cos(t);
-}, 10);
+
+
+// setInterval(()=>{
+
+//   landscape.set([...Array(30)].map((d,i) => ({x: 3*Math.sin(t)+0.1*i, y: 0.01*i**2})))
+// },100)
+
+
+// setInterval(() => {
+//   t = (Date.now()-t0)*5e-4
+//   circle_pos.x = Math.sin(t);
+//   circle_pos.y = 1-Math.cos(t);
+// }, 10);
