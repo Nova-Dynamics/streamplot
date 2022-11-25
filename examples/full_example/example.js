@@ -65,6 +65,14 @@ let mat = new DataState.MatrixRGBBottomCenter({dimensions:[50,50]});
 
 a2.imshow(mat, {dimensions:[50,50]});
 
+
+
+point = new DataState.Point()
+point.x = -1
+point.y = 4
+a2.add_element(new Element.Circle(point, {fcolor:"#00ff00aa"}));
+
+
 w.init();
 w.start();
 
