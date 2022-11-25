@@ -43,8 +43,8 @@ var t0 = Date.now();
 // },100)
 
 
-// setInterval(() => {
-//   t = (Date.now()-t0)*5e-4
-//   circle_pos.x = Math.sin(t);
-//   circle_pos.y = 1-Math.cos(t);
-// }, 10);
+setInterval(() => {
+  t = (Date.now()-t0)*5e-4
+  circle_pos.x = Math.sin(t);
+  circle_pos.y = 1-Math.cos(t);
+}, 10);
