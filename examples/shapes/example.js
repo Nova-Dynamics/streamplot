@@ -20,11 +20,11 @@ var a = w.add_subplot({top:1,bottom:2,left:1,right:2},{
 });
 
 
-let circle_pos = new DataState.Point();
+let svg_pos = new DataState.Point();
 
-circle_pos.x = 3
-circle_pos.y = 2
-a.add_element(new Element.SVGRenderer(circle_pos, {fcolor:"#00ff00aa"}));
+svg_pos.x = 3
+svg_pos.y = 2
+a.add_element(new Element.SVGRenderer(svg_pos, Element.Resources.LocationPinIcon, {size: 15}));
 
 
 let landscape = new DataState.Path()
@@ -37,14 +37,14 @@ w.start();
 var t0 = Date.now();
 
 
-// setInterval(()=>{
+setInterval(()=>{
 
-//   landscape.set([...Array(30)].map((d,i) => ({x: 3*Math.sin(t)+0.1*i, y: 0.01*i**2})))
-// },100)
+  landscape.set([{x:0, y:1}, svg_pos])
+},100)
 
 
 setInterval(() => {
   t = (Date.now()-t0)*5e-4
-  circle_pos.x = Math.sin(t);
-  circle_pos.y = 1-Math.cos(t);
+  svg_pos.x = Math.sin(t);
+  svg_pos.y = 1-Math.cos(t);
 }, 10);

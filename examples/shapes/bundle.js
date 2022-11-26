@@ -21,11 +21,11 @@ var a = w.add_subplot({top:1,bottom:2,left:1,right:2},{
 });
 
 
-let circle_pos = new DataState.Point();
+let svg_pos = new DataState.Point();
 
-circle_pos.x = 3
-circle_pos.y = 2
-a.add_element(new Element.SVGRenderer(circle_pos, {fcolor:"#00ff00aa"}));
+svg_pos.x = 3
+svg_pos.y = 2
+a.add_element(new Element.SVGRenderer(svg_pos, Element.Resources.LocationPinIcon, {size: 15}));
 
 
 let landscape = new DataState.Path()
@@ -38,16 +38,16 @@ w.start();
 var t0 = Date.now();
 
 
-// setInterval(()=>{
+setInterval(()=>{
 
-//   landscape.set([...Array(30)].map((d,i) => ({x: 3*Math.sin(t)+0.1*i, y: 0.01*i**2})))
-// },100)
+  landscape.set([{x:0, y:1}, svg_pos])
+},100)
 
 
 setInterval(() => {
   t = (Date.now()-t0)*5e-4
-  circle_pos.x = Math.sin(t);
-  circle_pos.y = 1-Math.cos(t);
+  svg_pos.x = Math.sin(t);
+  svg_pos.y = 1-Math.cos(t);
 }, 10);
 
 },{"../../index.js":2,"jquery":33}],2:[function(require,module,exports){
@@ -157,12 +157,12 @@ exports["Polygon"] = require("./elements/Polygon")
 exports["Pointer"] = require("./elements/Pointer")
 exports["Text"] = require("./elements/Text")
 exports["Matrix"] = require("./elements/Matrix")
-
+exports["Resources"] = require("./elements/resources/SVG")
 
 
 module.exports = exports;
 
-},{"./elements/Circle":14,"./elements/Line":15,"./elements/Matrix":16,"./elements/Pointer":17,"./elements/Polygon":18,"./elements/SVGRenderer":19,"./elements/Text":20}],5:[function(require,module,exports){
+},{"./elements/Circle":14,"./elements/Line":15,"./elements/Matrix":16,"./elements/Pointer":17,"./elements/Polygon":18,"./elements/SVGRenderer":19,"./elements/Text":20,"./elements/resources/SVG":21}],5:[function(require,module,exports){
 const { Line, Matrix, Text } = require("./Element");
 const { scaleLinear } = require('d3-scale');
 const { axisBottom, axisLeft } = require('d3-axis');
@@ -818,18 +818,19 @@ const SVG = require("./resources/SVG")
 
 
 class SVGRenderer extends Element {
-    constructor(datastate, config_obj={}) {
+    constructor(datastate, svg_element=SVG.LocationPinIcon, config_obj={}) {
         super(datastate, config_obj);
 
-        // Set defaults
-        this.scolor = config_obj.scolor || "#000000";
-        this.fcolor = config_obj.fcolor || "#00000000";
-        this.label = config_obj.label || "";
-        this.radius = config_obj.radius || 10;
-        this.svg  = config_obj.svg || SVG.LocationPinIcon;
-        this.width = config_obj.width_px || 10;
-        this.height = config_obj.height_px || 18;
-        
+
+
+        this.svg_element = svg_element;
+
+    
+        this.width = config_obj.size || 10;
+        this.height = this.width*this.svg_element.aspect_ratio;
+
+        this.offset_x = this.svg_element.center_x * this.width;
+        this.offset_y = this.svg_element.center_y * this.height;
 
     }
 
@@ -842,11 +843,11 @@ class SVGRenderer extends Element {
         this.field.plot.select(`#${this.id}`).remove();
         this.field.plot.append("foreignObject")
             .attr("id", this.id)
-            .attr("x", this.field.xtrans(this.datastate.x)-(this.width/2))
-            .attr("y", this.field.ytrans(this.datastate.y)-(this.width/2))
+            .attr("x", this.field.xtrans(this.datastate.x)-this.offset_x)
+            .attr("y", this.field.ytrans(this.datastate.y)-this.offset_y)
             .attr("width", this.width)
             .attr("height", this.height)
-            .html( this.svg )
+            .html( this.svg_element.data )
 
             
  
@@ -905,7 +906,18 @@ module.exports = Text
 
 
 module.exports = {
-    LocationPinIcon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 288 512"><!-- Font Awesome Pro 5.15.4 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) --><path d="M112 316.94v156.69l22.02 33.02c4.75 7.12 15.22 7.12 19.97 0L176 473.63V316.94c-10.39 1.92-21.06 3.06-32 3.06s-21.61-1.14-32-3.06zM144 0C64.47 0 0 64.47 0 144s64.47 144 144 144 144-64.47 144-144S223.53 0 144 0zm0 76c-37.5 0-68 30.5-68 68 0 6.62-5.38 12-12 12s-12-5.38-12-12c0-50.73 41.28-92 92-92 6.62 0 12 5.38 12 12s-5.38 12-12 12z"/></svg>`
+    LocationPinIcon: {
+        data: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 288 512"><!-- Font Awesome Pro 5.15.4 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) --><path d="M112 316.94v156.69l22.02 33.02c4.75 7.12 15.22 7.12 19.97 0L176 473.63V316.94c-10.39 1.92-21.06 3.06-32 3.06s-21.61-1.14-32-3.06zM144 0C64.47 0 0 64.47 0 144s64.47 144 144 144 144-64.47 144-144S223.53 0 144 0zm0 76c-37.5 0-68 30.5-68 68 0 6.62-5.38 12-12 12s-12-5.38-12-12c0-50.73 41.28-92 92-92 6.62 0 12 5.38 12 12s-5.38 12-12 12z"/></svg>`,
+        aspect_ratio: 1.77,
+        center_x: 0.5,
+        center_y: 1
+    },
+    LocationDotIcon: {
+        data: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 256c-35.3 0-64-28.7-64-64s28.7-64 64-64s64 28.7 64 64s-28.7 64-64 64z"/></svg>`,
+        aspect_ratio: 1.33,
+        center_x: 0.5,
+        center_y: 1
+    }
 }
 },{}],22:[function(require,module,exports){
 // https://d3js.org/d3-array/ v2.12.1 Copyright 2021 Mike Bostock
