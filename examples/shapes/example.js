@@ -15,8 +15,8 @@ var a = w.add_subplot({top:1,bottom:2,left:1,right:2},{
   },
   xlim : [-5,5],
   ylim : [-5,5],
-  xlabel : "Time Since (sec)",
-  ylabel : "Value"
+  xlabel : "x",
+  ylabel : "y"
 });
 
 
@@ -26,6 +26,11 @@ svg_pos.x = 3
 svg_pos.y = 2
 a.add_element(new Element.SVGRenderer(svg_pos, Element.Resources.LocationPinIcon, {size: 15}));
 
+let circle_pos = new DataState.Point();
+
+circle_pos.x = 0
+circle_pos.y = -2
+a.add_element(new Element.Circle(circle_pos, {fcolor: "#ff9100"}));
 
 let landscape = new DataState.Path()
 
@@ -48,3 +53,10 @@ setInterval(() => {
   svg_pos.x = Math.sin(t);
   svg_pos.y = 1-Math.cos(t);
 }, 10);
+
+setInterval(() => {
+  t = (Date.now()-t0)*5e-4
+  circle_pos.x = Math.sin(t*2);
+
+}, 10);
+

@@ -1,6 +1,6 @@
 {
   "name": "StreamPlot",
-  "version": "1.0.0",
+  "version": "2.0.2",
   "description": "Nodejs plot streaming library",
   "main": "index.js",
   "scripts": {
@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "bootstrap": "^4.6.0",
+    "browserify": "^17.0.0",
     "d3-axis": "^2.0.0",
     "d3-path": "^2.0.0",
     "d3-scale": "^3.2.3",
@@ -22,7 +23,6 @@
     "popper.js": "^1.16.1"
   },
   "devDependencies": {
-    "browserify": "^17.0.0",
     "terser": "^5.10.0"
   }
 }
