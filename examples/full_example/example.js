@@ -56,7 +56,12 @@ a2.plot(trajectory, {scolor:"red"})
 
 let landscape = new DataState.Path()
 
-a2.plot(landscape, {scolor:"#0000aa"})
+console.log("Datastate ID:" + landscape.id)
+
+let landscape_element = a2.plot(landscape, {scolor:"#0000aa"})
+
+
+console.log(a2.select_datastate_by_id(landscape.id))
 
 a2.add_element(new Element.Pointer(body_pose, {fcolor:"#000000aa"}));
 a2.add_element(new Element.Pointer(head_pose, {fcolor:"#aa0000aa", skewness: 4, width:0.05}));
@@ -81,6 +86,9 @@ setTimeout(()=>{
   landscape.set([...Array(30)].map((d,i) => ({x: 0.1*i, y: 0.01*i**2})))
 },1000)
 
+setTimeout(()=>{
+  a2.remove_element(landscape_element)
+},3000)
 
 setInterval(()=>{
   voltage.push(Math.random())
