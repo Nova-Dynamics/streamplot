@@ -4,7 +4,7 @@ window.jQuery = window.$ = require("jquery");
 window.$ = require("jquery");
 
 console.log(window.$("#container"))
-var w = new Window(window.$("#container"), {});
+var w = new Window(window.$("#container"), {redraw_time_ms: 100});
 
 var a = w.add_subplot({top:1,bottom:2,left:1,right:2},{
   width : 600,
@@ -49,6 +49,9 @@ a.plot(current, {scolor:"green"});
 let body_pose=new DataState.Pose();
 let head_pose=new DataState.Pose();
 
+let body_cov=new DataState.Covariance2d(body_pose);
+
+
 let trajectory = new DataState.Trajectory({tmax_seconds:5});
 
 a2.plot(trajectory, {scolor:"red"})
@@ -66,6 +69,10 @@ console.log(a2.select_datastate_by_id(landscape.id))
 a2.add_element(new Element.Pointer(body_pose, {fcolor:"#000000aa"}));
 a2.add_element(new Element.Pointer(head_pose, {fcolor:"#aa0000aa", skewness: 4, width:0.05}));
 
+a2.add_element(new Element.Covariance2d(body_cov, {scolor: "#aa00aa85", nsig: 1}));
+a2.add_element(new Element.Covariance2d(body_cov, {scolor: "#aa00aa56", nsig: 2}));
+a2.add_element(new Element.Covariance2d(body_cov, {scolor: "#aa00aa2d", nsig: 3}));
+
 let mat = new DataState.MatrixRGBBottomCenter({dimensions:[50,50]});
 
 a2.imshow(mat, {dimensions:[50,50]});
@@ -81,6 +88,10 @@ a2.add_element(new Element.Circle(point, {fcolor:"#00ff00aa"}));
 w.init();
 w.start();
 
+setInterval(()=>{
+  body_cov.covarience = [[Math.random()/10, 0],  
+                        [0, Math.random()/10]]
+},1000)
 
 setTimeout(()=>{
   landscape.set([...Array(30)].map((d,i) => ({x: 0.1*i, y: 0.01*i**2})))
