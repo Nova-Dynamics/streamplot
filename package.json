@@ -25,5 +25,9 @@
   },
   "devDependencies": {
     "terser": "^5.10.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Nova-Dynamics/streamplot.git"
   }
 }
