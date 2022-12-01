@@ -13,6 +13,9 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 # Bundle files
 *bundle.js
 
+#VS code files
+.vscode
+
 # Runtime data
 pids
 *.pid

@@ -1,14 +1,14 @@
 {
-  "name": "StreamPlot",
+  "name": "@novadynamics/streamplot",
   "version": "2.0.6",
-  "description": "Nodejs plot streaming library",
+  "description": "Library for creating and dynamically updating plots and graphs with javascript. This library focuses on live data, and ease of use for creating plots",
   "main": "index.js",
   "scripts": {
     "build": "./build-tools/build-js.sh mangle && ./build-tools/build-css.sh",
     "build:unmangled": "./build-tools/build-js.sh clean && ./build-tools/build-css.sh"
   },
-  "author": "Jonathan Van Shenck and Sean Sullivan",
-  "license": "ISC",
+  "author": "Jonathan Van Schenck and Sean Sullivan",
+  "license": "MIT",
   "dependencies": {
     "bootstrap": "^4.6.0",
     "browserify": "^17.0.0",
