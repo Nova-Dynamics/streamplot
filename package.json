@@ -1,13 +1,13 @@
 {
   "name": "StreamPlot",
-  "version": "2.0.2",
+  "version": "2.0.6",
   "description": "Nodejs plot streaming library",
   "main": "index.js",
   "scripts": {
     "build": "./build-tools/build-js.sh mangle && ./build-tools/build-css.sh",
     "build:unmangled": "./build-tools/build-js.sh clean && ./build-tools/build-css.sh"
   },
-  "author": "",
+  "author": "Jonathan Van Shenck and Sean Sullivan",
   "license": "ISC",
   "dependencies": {
     "bootstrap": "^4.6.0",

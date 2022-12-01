@@ -89,7 +89,7 @@ w.init();
 w.start();
 
 setInterval(()=>{
-  body_cov.covarience = [[Math.random()/10, 0],  
+  body_cov.covariance = [[Math.random()/10, 0],  
                         [0, Math.random()/10]]
 },1000)
 
