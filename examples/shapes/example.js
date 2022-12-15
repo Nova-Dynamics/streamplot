@@ -24,7 +24,7 @@ let svg_pos = new DataState.Point();
 
 svg_pos.x = 3
 svg_pos.y = 2
-a.add_element(new Element.SVGRenderer(svg_pos, Element.Resources.LocationPinIcon, {size: 15}));
+a.add_element(new Element.SVGRenderer(svg_pos, sp.Element.Resources.LocationPinIcon, {size: 15}));
 
 let circle_pos = new DataState.Point();
 

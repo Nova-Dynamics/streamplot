@@ -13,7 +13,7 @@ var a = w.add_subplot({top:1,bottom:2,left:1,right:2},{
     top: 30, right: 20, bottom: 30, left: 50
   },
   xlim : [0,20],
-  ylim : [-1.0,1.0],
+  ylim : [0,4.0],
   xlabel : "Time Since (sec)",
   ylabel : "Value"
 });
@@ -35,6 +35,7 @@ var a2 = w.add_subplot({top:1,bottom:2,left:2,right:3},{
   },
   xlim : [-2.5,2.5],
   ylim : [-0.05,4.95],
+  xtick_count: 10,
   title : "Flow Map"
 });
 
@@ -82,7 +83,7 @@ a2.imshow(mat, {dimensions:[50,50]});
 point = new DataState.Point()
 point.x = -1
 point.y = 4
-a2.add_element(new Element.Circle(point, {fcolor:"#00ff00aa"}));
+a2.add_element(new Element.Circle(point, {fcolor:"#00ff00aa", radius: 1}));
 
 
 w.init();
@@ -102,8 +103,8 @@ setTimeout(()=>{
 },3000)
 
 setInterval(()=>{
-  voltage.push(Math.random())
-  current.push(Math.random()-1)
+  voltage.push(Math.random()+1)
+  current.push(Math.random()+3)
 }, 100)
 
 var iter = [...Array(50)]
