@@ -16,7 +16,22 @@ var a = new Vis3D(w, {top:1,bottom:2,left:1,right:2},{
   }
 });
 
-//a.connect_to_window()
+let point = new DataState.V3D.Point()
+
+a.add_element(new Element.V3D.Sphere(point, {radius: 0.1}));
+
 
 w.init();
 w.start();
+
+var t0 = Date.now();
+
+setInterval(()=>{
+
+  t = (Date.now()-t0)*5e-4
+
+  point.x = 2*Math.sin(t);
+  point.y = 2-2*Math.cos(t);
+
+
+},30)
