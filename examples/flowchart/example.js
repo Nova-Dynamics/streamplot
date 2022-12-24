@@ -43,6 +43,9 @@ w.start();
 
 setInterval(()=>{
   chart_ds.nodes.forEach((n)=>n.active = false)
+  let idx = Math.floor(Math.random() * 4)
 
+  chart_ds.nodes[idx].active = true;
+  
   chart_ds.is_updated = true
 }, 500)
