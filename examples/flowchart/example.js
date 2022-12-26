@@ -20,84 +20,35 @@ var a = w.add_subplot({top:1,bottom:2,left:1,right:2},{
 
 let chart_ds = new DataState.FlowChart()
 
-// chart_ds.nodes = [
-//   {title: "quotation", width: 100, height: 50},
-//   {title: "process order", width: 100, height: 50},
-//   {title: "production", width: 100, height: 50},
-//   {title: "Purchasing", width: 100, height: 50},
-//   {title: "Delivery", width: 100, height: 50}
-// ]
+chart_ds.add_node("quotation")
+chart_ds.add_node("process")
+chart_ds.add_node("production")
+chart_ds.add_node("Purchasing")
+chart_ds.add_node("Delivery")
 
-// chart_ds.links = [
-//   {source: 0, target: 1, link_label: "yourmom"},
-//   {source: 1, target: 2, link_label: "yourmom"},
-//   {source: 1, target: 3, link_label: "yourmom"},
-//   {source: 3, target: 2, link_label: "yourmom"},
-//   {source: 2, target: 4, link_label: "yourmom"},
-// ]
+chart_ds.add_link({from_id: "quotation",  to_id: "process",    label: "yourmom"}, 300)
+chart_ds.add_link({from_id: "process",    to_id: "production", label: "yourmom"})
+chart_ds.add_link({from_id: "process",    to_id: "Purchasing", label: "yourmom"})
+chart_ds.add_link({from_id: "Purchasing", to_id: "production", label: "yourmom"})
+chart_ds.add_link({from_id: "production", to_id: "Delivery",   label: "yourmom"}, 300)
 
-chart_ds.nodes = [
-  {id: "quotation", width: 100, height: 50},
-  {id: "process order", width: 100, height: 50},
-  {id: "production", width: 100, height: 50},
-  {id: "Purchasing", width: 100, height: 50, active: false},
-  {id: "Delivery", width: 100, height: 50}
-]
-
-chart_ds.links = [
-  {source: "quotation", target: "process order", link_label: "yourmom"},
-  {source: "process order", target: "production", link_label: "yourmom"},
-  {source: "process order", target: "Purchasing", link_label: "yourmom"},
-  {source: "Purchasing", target: "production", link_label: "yourmom"},
-  {source: "production", target: "Delivery", link_label: "yourmom"},
-]
 
 a.add_element(new Element.FlowChart(chart_ds, {fcolor: "#ff9100"}));
 
 w.init();
 w.start();
 
-setTimeout(()=>{
-  // chart_ds.nodes = [
-  //   {id: "a", width: 100, height: 5},
-  //   {id: "b"},
-  //   {id: "c"},
-  //   {id: "d", active: true}
-  //   ]
-  //   chart_ds.links = [
-  //   {source: "a", target: "b"},
-  //   {source: "b", target: "c"},
-  //   {source: "c", target: "d"},
-  //   {source: "d", target: "a"}
-  //   ]
 
-    chart_ds.nodes = [
-      {id: "quotation", width: 100, height: 50},
-      {id: "process order", width: 100, height: 50},
-      {id: "production", width: 100, height: 50},
-      {id: "Purchasing", width: 100, height: 50, active: true},
-      {id: "Delivery", width: 100, height: 50}
-    ]
-    
-    chart_ds.links = [
-      {source: "quotation", target: "process order", link_label: "yourmom"},
-      {source: "process order", target: "production", link_label: "yourmom"},
-      {source: "process order", target: "Purchasing", link_label: "yourmom"},
-      {source: "Purchasing", target: "production", link_label: "yourmom"},
-      {source: "production", target: "Delivery", link_label: "yourmom"},
-    ]
+setInterval(()=>{
+
+    let idx = Math.floor(Math.random() * chart_ds.nodes.length);
+    chart_ds.set_active(chart_ds.nodes[idx].id)
+
 }, 500)
 
-// setInterval(()=>{
-//   chart_ds.nodes.forEach((n)=>{
-//     n.active = false;
-//     console.log(n)
-//   })
-//   let idx = Math.floor(Math.random() * 4)
+setTimeout(()=>{
 
-//   chart_ds.nodes[idx].active = true;
+  chart_ds.remove_node("Delivery")
 
-//   console.log(idx)
 
-//   chart_ds.is_updated = true
-// }, 500)
+}, 1750)

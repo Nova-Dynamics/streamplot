@@ -13,7 +13,7 @@ var a = w.add_subplot({top:1,bottom:2,left:1,right:2},{
   margins : {
     top: 30, right: 20, bottom: 30, left: 50
   },
-  xlim : [-5,5],
+  xlim : [-6,6],
   ylim : [-5,5],
   xlabel : "x",
   ylabel : "y"
@@ -24,13 +24,13 @@ let svg_pos = new DataState.Point();
 
 svg_pos.x = 3
 svg_pos.y = 2
-a.add_element(new Element.SVGRenderer(svg_pos, sp.Element.Resources.LocationPinIcon, {size: 15}));
+a.add_element(new Element.SVGRenderer(svg_pos, Element.Resources.LocationPinIcon, {size: 0.2}));
 
 let circle_pos = new DataState.Point();
 
 circle_pos.x = 0
 circle_pos.y = -2
-a.add_element(new Element.Circle(circle_pos, {fcolor: "#ff9100"}));
+a.add_element(new Element.Circle(circle_pos, {fcolor: "#ff9100", radius: .3}));
 
 let landscape = new DataState.Path()
 
