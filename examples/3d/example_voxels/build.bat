@@ -1,0 +1,1 @@
+npx esbuild .\example.js --bundle --outfile=bundle.js

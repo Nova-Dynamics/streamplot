@@ -1,1 +1,1 @@
-npx browserify example.js > bundle.js
+npx esbuild .\example.js --bundle --outfile=bundle.js
