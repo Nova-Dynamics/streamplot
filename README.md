@@ -1,5 +1,12 @@
-# Streamplot
-Library for creating and dynamically updating plots and graphs with javascript. This library focuses on live data, and ease of use for creating plots
+ <img src="images/banner.png" alt="Streamplot logo" title="Streamplot" align="right" height="60"></img>
+
+
+ # Streamplot
+
+Streamplot is a JavaScript library that provides tools for creating and updating plots and graphs in real time. It is particularly well-suited for visualizing live data, and offers a range of customization options to allow users to create plots that meet their specific needs. Streamplot includes functionality for displaying various types of data states, as well as adding interactive elements like pointers and circles to the plots. It is easy to use, making it a convenient choice for creating dynamic visualizations of data.
+
+![Streamplot diagram](images/streamplot-collage.jpg)
+
 
 ## Overview
 
@@ -21,7 +28,7 @@ A Datastate is simply a container for data that will be rendered using an Elemen
 
 See following diagram for typical use:
 
-![Streamplot diagram](diagram.png)
+![Streamplot diagram](images/diagram.png)
 
 
 
