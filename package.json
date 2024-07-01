@@ -1,6 +1,6 @@
 {
   "name": "@novadynamics/streamplot",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "Library for creating and dynamically updating plots and graphs with javascript. This library focuses on live data, and ease of use for creating plots",
   "main": "index.js",
   "scripts": {
