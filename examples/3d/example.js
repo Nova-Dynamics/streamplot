@@ -13,7 +13,9 @@ var a = new Vis3D(w, {top:1,bottom:2,left:1,right:2},{
   height : 600,
   margins : {
     top: 30, right: 20, bottom: 30, left: 50
-  }
+  },
+  canvas: undefined,
+  context: undefined
 });
 
 let point = new DataState.V3D.Point()

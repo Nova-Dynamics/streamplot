@@ -4,7 +4,7 @@ const Element = require("./lib/Element");
 const { Axis, Textbox, Vis3D } = require('./lib/Fields');
 const { Window } = require('./lib/Window');
 
-module.exports = exports = {
+module.exports = {
     Window : Window,
     Axis : Axis,
     Textbox : Textbox,
